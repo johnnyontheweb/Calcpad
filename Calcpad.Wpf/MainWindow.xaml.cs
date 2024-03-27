@@ -1123,6 +1123,8 @@ namespace Calcpad.Wpf
             _parser.ShowWarnings = ext != ".cpdz";
             if (ext == ".cpdz")
             {
+                // save .txt for checking
+                File.WriteAllText(Path.ChangeExtension(fileName, ".txt"), InputText);
                 if (IsWebForm)
                     CalculateAsync(true);
                 else
