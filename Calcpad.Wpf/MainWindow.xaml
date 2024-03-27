@@ -5,7 +5,7 @@
     xmlns:core="clr-namespace:Calcpad.Core;assembly=Calcpad.Core"
     x:Class="Calcpad.Wpf.MainWindow"
     Closing="Window_Closing"
-    Title=" Calcpad 6.2.1"
+    Title=" Calcpad 6.2.3"
     Height="800" 
     Width="1200"
     WindowStartupLocation="CenterScreen"
@@ -1369,7 +1369,7 @@
         <Button Grid.Row="0" x:Name="PrintButton" Command="ApplicationCommands.Print"
                 HorizontalAlignment="Right"  VerticalAlignment="Top"
                 Height="24" Width="24" Margin="0,24,83,0"
-                Click="SaveOutputButton_Click" IsTabStop="false" Focusable="false" 
+                IsTabStop="false" Focusable="false" 
                 Background="{x:Null}" BorderBrush="{x:Null}"
                 ToolTip="{x:Static wpf:MainWindowResources.PrintPreview}">
             <Image Source="Resources/print.png" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center"/>
