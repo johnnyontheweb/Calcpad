@@ -1272,7 +1272,7 @@ namespace Calcpad.Wpf
                     {
                         WebBrowser.NavigateToString(_htmlParsing);
                     }
-                    void parse() => _parser.Parse(outputText);
+                    void parse() =>_parser.Parse(outputText);
                     await Task.Run(parse);
                     _isParsing = false;
                     if (!IsWebForm)
@@ -1341,9 +1341,9 @@ namespace Calcpad.Wpf
             return s2;
         }
 
-        private readonly string ErrorString = AppMessages.ErrorString;
         private string CodeToHtml(string code)
         {
+            var ErrorString = AppMessages.ErrorString;
             var highlighter = new HighLighter();
             var errors = new Queue<int>();
             _stringBuilder.Clear();
@@ -1363,7 +1363,7 @@ namespace Calcpad.Wpf
                 if (line.StartsWith(ErrorString))
                 {
                     errors.Enqueue(lineNumber);
-                    _stringBuilder.Append($"<span class=\"error\">{lineText[1..]}</span>");
+                    _stringBuilder.Append($"<span class=\"error\">{lineText}</span>");
                 }
                 else
                 {
@@ -1571,7 +1571,7 @@ namespace Calcpad.Wpf
                 }
                 else
                 {
-                    s = ReplaceCStyleRelationalOperators(line.TrimStart('\t'));
+                    s = ReplaceCStyleOperators(line.TrimStart('\t'));
                     if (!hasForm)
                         hasForm = MacroParser.HasInputFields(s);
                 }
@@ -1594,7 +1594,7 @@ namespace Calcpad.Wpf
             return hasForm;
         }
 
-        private string ReplaceCStyleRelationalOperators(ReadOnlySpan<char> s)
+        private string ReplaceCStyleOperators(ReadOnlySpan<char> s)
         {
             if (s.IsEmpty)
                 return string.Empty;
@@ -1639,6 +1639,22 @@ namespace Calcpad.Wpf
                             var n = _stringBuilder.Length - 1;
                             if (n >= 0 && _stringBuilder[n] == '%')
                                 _stringBuilder[n] = '⦼';
+                            else
+                                _stringBuilder.Append(c);
+                        }
+                        else if (c == '&')
+                        {
+                            var n = _stringBuilder.Length - 1;
+                            if (n >= 0 && _stringBuilder[n] == '&')
+                                _stringBuilder[n] = '∧';
+                            else
+                                _stringBuilder.Append(c);
+                        }
+                        else if (c == '|')
+                        {
+                            var n = _stringBuilder.Length - 1;
+                            if (n >= 0 && _stringBuilder[n] == '|')
+                                _stringBuilder[n] = '∨';
                             else
                                 _stringBuilder.Append(c);
                         }
@@ -3598,6 +3614,10 @@ namespace Calcpad.Wpf
                         c = '′';
                     else if (c == '⁗')
                         c = '″';
+                    else if (c == '‰')
+                        c = '‱';
+                    else if (c == '‱')
+                        c = '‰';
                     tb.Text = c.ToString();
                 }
             }

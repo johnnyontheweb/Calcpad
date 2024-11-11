@@ -1,11 +1,11 @@
-<Window
+﻿<Window
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:wpf="clr-namespace:Calcpad.Wpf"
     xmlns:core="clr-namespace:Calcpad.Core;assembly=Calcpad.Core"
     x:Class="Calcpad.Wpf.MainWindow"
     Closing="Window_Closing"
-    Title=" Calcpad VM 7.0.9"
+    Title=" Calcpad VM 7.1.1"
     Height="800" 
     Width="1200"
     WindowStartupLocation="CenterScreen"
@@ -85,12 +85,12 @@
             </Setter>
         </Style>
         <Style x:Key="GreekLetter" TargetType="{x:Type TextBlock}">
-            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Margin" Value="1"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Width" Value="14"/>
+            <Setter Property="Width" Value="15"/>
             <Setter Property="Height" Value="14"/>
             <Setter Property="FontFamily" Value="Times New Romans"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -439,7 +439,7 @@
                         <MenuItem Header="{x:Static wpf:MainWindowResources.Creational}">
                             <MenuItem Click="Button_Click" Tag="vector(" Header="vector(n)" ToolTip="{x:Static wpf:MainWindowResources.CreatesAnEmptyVectorWithLengthN}" />
                             <MenuItem Click="Button_Click" Tag="fill(" Header="fill(v; x)" ToolTip="{x:Static wpf:MainWindowResources.FillsVectorVWithValueX}" />
-                            <MenuItem Click="Button_Click" Tag="range(" Header="range(x₁; xₙ; s)" ToolTip="{x:Static wpf:MainWindowResources.CreatesAVectorWithValuesSpanningFromXToXₙWithStepS}" />
+                            <MenuItem Click="Button_Click" Tag="range(" Header="range(x₁; xₙ; s)" ToolTip="{x:Static wpf:MainWindowResources.CreatesAVectorWithValuesSpanningFromX1ToXnWithStepS}" />
                         </MenuItem>
                         <MenuItem Header="{x:Static wpf:MainWindowResources.Structural}">
                             <MenuItem Click="Button_Click" Tag="len(" Header="len(v)" ToolTip="{x:Static wpf:MainWindowResources.ReturnsTheLengthOfVectorV}" />
@@ -491,7 +491,7 @@
                                         <Run Text=" &lt; x"/>
                                         </TextBlock>
                                     </MenuItem.ToolTip>
-                                </MenuItem>                                
+                                </MenuItem>
                                 <MenuItem Click="Button_Click" Tag="find_le(" Header="find__le(v; x; i)">
                                     <MenuItem.ToolTip>
                                         <TextBlock>
@@ -507,7 +507,7 @@
                                             <Run Text=" &gt; x"/>
                                         </TextBlock>
                                     </MenuItem.ToolTip>
-                                </MenuItem>                                
+                                </MenuItem>
                                 <MenuItem Click="Button_Click" Tag="find_ge(" Header="find__ge(v; x; i)">
                                     <MenuItem.ToolTip>
                                         <TextBlock>
@@ -837,7 +837,8 @@
                                 <MenuItem Click="Button_Click" Tag="cholesky(" Header="cholesky(M)" ToolTip="{x:Static wpf:MainWindowResources.CholeskyDecompositionOfASymmetricPositiveDefiniteMatrixM}" />
                                 <MenuItem Click="Button_Click" Tag="lu(" Header="lu(M)" ToolTip="{x:Static wpf:MainWindowResources.LUDecompositionOfMatrixM}" />
                                 <MenuItem Click="Button_Click" Tag="qr(" Header="qr(M)" ToolTip="{x:Static wpf:MainWindowResources.QRDecompositionOfMatrixM}" />
-                                <MenuItem Click="Button_Click" Tag="svd(" Header="svd(M)" ToolTip="{x:Static wpf:MainWindowResources.SingularValueDecompositionOfM}" />                            </MenuItem>
+                                <MenuItem Click="Button_Click" Tag="svd(" Header="svd(M)" ToolTip="{x:Static wpf:MainWindowResources.SingularValueDecompositionOfM}" />
+                            </MenuItem>
                             <MenuItem Click="Button_Click" Tag="inverse(" Header="inverse(M)" ToolTip="{x:Static wpf:MainWindowResources.InverseOfMatrixM}" />
                             <MenuItem Click="Button_Click" Tag="lsolve(" Header="lsolve(A; b)" ToolTip="{x:Static wpf:MainWindowResources.SolvesTheSystemOfLinearEquationsAxBUsingLDLTDecompositionForSymmetricMatricesAndLUForNonSymmetric}" />
                             <MenuItem Click="Button_Click" Tag="clsolve(" Header="clsolve(A; b)" ToolTip="{x:Static wpf:MainWindowResources.SolvesTheLinearMatrixEquationAxBWithASymmetricPositiveDefiniteMatrixAUsingCholeskyDecomposition}" />
@@ -855,6 +856,12 @@
                     <MenuItem Header="{x:Static wpf:UnitsResources.Dimensionless}">
                         <MenuItem Click="Button_Click" Tag="%"    Header="{x:Static wpf:UnitsResources.Percent}"/>
                         <MenuItem Click="Button_Click" Tag="‰"    Header="{x:Static wpf:UnitsResources.Permille}"/>
+                        <MenuItem Click="Button_Click" Tag="‱"   Header="{x:Static wpf:UnitsResources.Permyriad}"/>
+                        <MenuItem Click="Button_Click" Tag="pcm"  Header="{x:Static wpf:UnitsResources.Per100000}"/>
+                        <MenuItem Click="Button_Click" Tag="ppm"  Header="{x:Static wpf:UnitsResources.PerMillion}"/>
+                        <MenuItem Click="Button_Click" Tag="ppb"  Header="{x:Static wpf:UnitsResources.PerBillion}"/>
+                        <MenuItem Click="Button_Click" Tag="ppt"  Header="{x:Static wpf:UnitsResources.PerTrillion}"/>
+                        <MenuItem Click="Button_Click" Tag="ppq"  Header="{x:Static wpf:UnitsResources.PerQuadrillion}"/>
                     </MenuItem>
                     <MenuItem Header="{x:Static wpf:UnitsResources.Angles}">
                         <MenuItem Click="Button_Click" Tag="°"    Header="{x:Static wpf:UnitsResources.Degrees}"/>
@@ -2217,40 +2224,39 @@
                     </RichTextBox>
                     <Canvas Grid.Row="0" x:Name="LineNumbers" HorizontalAlignment="Left" Margin="6,5,0,26" Width="40"/>
                     <Border Grid.Row="0" BorderThickness="0,0,1,0" HorizontalAlignment="Left" Margin="0,5,0,24" Width="50" BorderBrush="#FFE3E3E3"/>
-                    <WrapPanel Grid.Row="0" x:Name="GreekLettersWarpPanel" ToolTip="{x:Static wpf:MainWindowResources.GreekLetters}" Margin="4,0,0,1" Height="20" VerticalAlignment="Bottom">
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="‰" Style="{StaticResource GreekLetter}" Margin="5,2,1,2" 
-                                   ToolTip="{x:Static wpf:UnitsResources.Permille}" />
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="°" Style="{StaticResource GreekLetter}" Margin="2,2,2,2" FontSize="16"
+                    <WrapPanel Grid.Row="0" x:Name="GreekLettersWarpPanel" ToolTip="{x:Static wpf:MainWindowResources.GreekLetters}" Margin="1,0,0,1" Height="20" VerticalAlignment="Bottom">
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="‰" Style="{StaticResource GreekLetter}" Width="24" />
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="°" Style="{StaticResource GreekLetter}" FontSize="16"
                                    ToolTip="{x:Static wpf:UnitsResources.Degrees}" />
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="′" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" FontSize="16"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="″" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" FontSize="16"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ø" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="α" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="β" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="γ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="δ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ε" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ζ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="η" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="θ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" Tag='θ'/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ϑ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" Tag='ϑ'/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ι" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="κ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="λ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="μ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ν" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ξ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ο" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="π" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ρ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ς" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" Tag='ς'/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="σ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2" Tag='σ'/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="τ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="υ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="φ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="χ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ψ" Style="{StaticResource GreekLetter}" Margin="2,2,1,2"/>
-                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ω" Style="{StaticResource GreekLetter}" Margin="2,2,4,2"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="′" Style="{StaticResource GreekLetter}" FontSize="16"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="″" Style="{StaticResource GreekLetter}" FontSize="16"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ø" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="α" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="β" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="γ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="δ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ε" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ζ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="η" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="θ" Style="{StaticResource GreekLetter}" Tag='θ'/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ϑ" Style="{StaticResource GreekLetter}" Tag='ϑ'/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ι" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="κ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="λ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="μ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ν" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ξ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ο" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="π" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ρ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ς" Style="{StaticResource GreekLetter}" Tag='ς'/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="σ" Style="{StaticResource GreekLetter}" Tag='σ'/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="τ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="υ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="φ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="χ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ψ" Style="{StaticResource GreekLetter}"/>
+                        <TextBlock MouseUp="GreekLetter_MouseUp" Text="ω" Style="{StaticResource GreekLetter}"/>
                         <Button Click="ChangeCaseButton_Click" Content="aA" Style="{StaticResource RoundButton}" 
                                 Width="32"  Height="20" FontSize="13" Margin="2,0,0,0"
                                 VerticalAlignment="Center" HorizontalAlignment="Center" 
