@@ -13,7 +13,8 @@ namespace Calcpad.Core
             Argument,
             Result,
             Variable,
-            IndexTarget
+            IndexTarget,
+            Limit,
         }
 
         private static string ItemToString(Items item) =>
@@ -30,8 +31,6 @@ namespace Calcpad.Core
                 _ => throw new ArgumentException(Messages.Invalid_item),
             };
 
-        internal static void InvalidSyntaxException(in string s) =>
-           New(string.Format(Messages.Invalid_syntax__0__, s));
         internal static void IncompleteExpressionException() =>
             New(Messages.Incomplete_expression);
         internal static void MissingLeftBracketException() =>
@@ -146,6 +145,8 @@ namespace Calcpad.Core
             New(Messages.The_assignment_equals_must_be_preceded_by_custom_function_or_variable);
         internal static void AssignmentNotFirstException() =>
             New(Messages.Assignment_equals_must_be_the_first_operator_in_the_expression);
+        internal static void InvalidSyntaxException(in string s) =>
+           New(string.Format(Messages.Invalid_syntax__0__, s));
         internal static void InvalidSyntaxException(in string s1, in string s2) =>
             New(string.Format(Messages.Invalid_syntax__0__1__, s1, s2));
         internal static void UnexpectedDelimiterException() =>
@@ -304,6 +305,10 @@ namespace Calcpad.Core
 
         internal static void MatrixNotHighException() =>
             New(Messages.The_number_of_matrix_rows_must_be_greater_than_or_equal_to_the_number_of_columns);
+
+
+        internal static void FunctionDefinitionInSolverException() =>
+            New(Messages.FunctionDefinitionNotAllowedInSolverBlock);
 
         private static void New(in string s) =>
             throw new MathParser.MathParserException(s);

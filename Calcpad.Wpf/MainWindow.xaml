@@ -5,7 +5,7 @@
     xmlns:core="clr-namespace:Calcpad.Core;assembly=Calcpad.Core"
     x:Class="Calcpad.Wpf.MainWindow"
     Closing="Window_Closing"
-    Title=" Calcpad VM 7.1.1"
+    Title=" Calcpad VM 7.1.6"
     Height="800" 
     Width="1200"
     WindowStartupLocation="CenterScreen"
@@ -2792,6 +2792,7 @@
                         <ListBoxItem Content="pL"                 Foreground="DarkCyan"/>
                         <ListBoxItem Content="PlotHeight"         Foreground="Blue"/>
                         <ListBoxItem Content="PlotStep"           Foreground="Blue"/>
+                        <ListBoxItem Content="PlotSVG"            Foreground="Blue"/>
                         <ListBoxItem Content="PlotWidth"          Foreground="Blue"/>
                         <ListBoxItem Content="pm"                 Foreground="DarkCyan"/>
                         <ListBoxItem Content="pole"               Foreground="DarkCyan"/>

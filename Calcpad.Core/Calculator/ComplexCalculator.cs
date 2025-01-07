@@ -4,10 +4,45 @@ namespace Calcpad.Core
 {
     internal class ComplexCalculator : Calculator
     {
-        private static readonly Operator[] Operators;
+        private static readonly Operator[] Operators =
+            [
+                Pow,
+                Divide,
+                IntDiv,
+                Remainder,
+                Multiply,
+                Subtract,
+                Add,
+                LessThan,
+                GreaterThan,
+                LessThanOrEqual,
+                GreaterThanOrEqual,
+                Equal,
+                NotEqual,
+                (in Value a, in Value b) => a & b,
+                (in Value a, in Value b) => a | b,
+                (in Value a, in Value b) => a ^ b,
+                (in Value _, in Value b) => b
+            ];
         private readonly Function[] _functions;
         private readonly Operator[] Functions2;
-        private static readonly Func<Value[], Value>[] MultiFunctions;
+        private static readonly Func<Value[], Value>[] MultiFunctions =
+            [
+                Min,
+                Max,
+                Sum,
+                SumSq,
+                Srss,
+                Average,
+                Product,
+                Mean,
+                Switch,
+                And,
+                Or,
+                Xor,
+                Gcd,
+                Lcm,
+            ];
 
         internal override int Degrees
         {
@@ -74,48 +109,6 @@ namespace Calcpad.Core
             ];
         }
 
-        static ComplexCalculator()
-        {
-            Operators =
-            [
-                Pow,
-                Divide,
-                IntDiv,
-                Remainder,
-                Multiply,
-                Subtract,
-                Add,
-                LessThan,
-                GreaterThan,
-                LessThanOrEqual,
-                GreaterThanOrEqual,
-                Equal,
-                NotEqual,
-                (in Value a, in Value b) => a & b,
-                (in Value a, in Value b) => a | b,
-                (in Value a, in Value b) => a ^ b,
-                (in Value _, in Value b) => b
-            ];
-
-            MultiFunctions =
-            [
-                Min,
-                Max,
-                Sum,
-                SumSq,
-                Srss,
-                Average,
-                Product,
-                Mean,
-                Switch,
-                And,
-                Or,
-                Xor,
-                Gcd,
-                Lcm,
-            ];
-        }
-
         internal override Value EvaluateOperator(long index, in Value a, in Value b) => Operators[index](a, b);
         internal override Value EvaluateFunction(long index, in Value a) => _functions[index](a);
         internal override Value EvaluateFunction2(long index, in Value a, in Value b) => Functions2[index](a, b);
@@ -158,6 +151,13 @@ namespace Calcpad.Core
 
         internal static Value Multiply(in Value a, in Value b)
         {
+            if (a.Units is null)
+            {
+                if (b.Units is not null && b.Units.IsDimensionless && !b.IsUnit)
+                    return new(a.Complex * b.Complex * b.Units.GetDimensionlessFactor(), null);
+
+                return new(a.Complex * b.Complex, b.Units);
+            }
             var uc = Unit.Multiply(a.Units, b.Units, out var d, b.IsUnit);
             var c = a.Complex * b.Complex * d;
             return new(c, uc, a.IsUnit && b.IsUnit);
@@ -375,8 +375,12 @@ namespace Calcpad.Core
 
         private static Value Pow(in Value value, in Value power)
         {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Complex.Pow(value.Complex * u.GetDimensionlessFactor(), power.Complex));
+
             var result = Complex.Pow(value.Complex, power.Complex);
-            var unit = Unit.Pow(value.Units, power, value.IsUnit);
+            var unit = Unit.Pow(u, power, value.IsUnit);
             return new(result, unit, value.IsUnit);
         }
 
@@ -406,35 +410,49 @@ namespace Calcpad.Core
 
         internal static Value Sqrt(in Value value)
         {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Complex.Sqrt(value.Complex * u.GetDimensionlessFactor()));
+
             var result = Complex.Sqrt(value.Complex);
-            if (value.Units is null)
+            if (u is null)
                 return new(result);
 
-            var unit = Unit.Root(value.Units, 2, value.IsUnit);
+            var unit = Unit.Root(u, 2, value.IsUnit);
             return new(result, unit);
         }
 
         private static Value Cbrt(in Value value)
         {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Complex.Cbrt(value.Complex * u.GetDimensionlessFactor()));
+
             var result = Complex.Cbrt(value.Complex);
-            if (value.Units is null)
+            if (u is null)
                 return new(result);
 
-            var unit = Unit.Root(value.Units, 3, value.IsUnit);
+            var unit = Unit.Root(u, 3, value.IsUnit);
             return new(result, unit);
         }
 
         private static Value Root(in Value value, in Value root)
         {
             var n = GetRoot(root);
+
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Complex.Pow(value.Complex * u.GetDimensionlessFactor(), 1d / n));
+
             var result = Complex.Pow(value.Complex, 1d / n);
 
-            if (value.Units is null)
+            if (u is null)
                 return new(result);
 
-            var unit = Unit.Root(value.Units, n, value.IsUnit);
+            var unit = Unit.Root(u, n, value.IsUnit);
             return new(result, unit);
         }
+
         private static Value Round(in Value value) => new(Complex.Round(value.Complex), value.Units);
         private static Value Floor(in Value value) => new(Complex.Floor(value.Complex), value.Units);
         private static Value Ceiling(in Value value) => new(Complex.Ceiling(value.Complex), value.Units);

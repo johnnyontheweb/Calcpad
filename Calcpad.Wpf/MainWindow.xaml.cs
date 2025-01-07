@@ -1,5 +1,6 @@
 ﻿using Calcpad.Core;
 using Microsoft.Win32;
+using SHDocVw;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -27,7 +28,7 @@ namespace Calcpad.Wpf
     public partial class MainWindow : Window
     {
         //Culture
-        private static readonly string _currentCultureName = "en";
+        private static readonly string _currentCultureName = "bg";
 
         //Static resources
         private static readonly char[] GreekLetters = ['α', 'β', 'χ', 'δ', 'ε', 'φ', 'γ', 'η', 'ι', 'ø', 'κ', 'λ', 'μ', 'ν', 'ο', 'π', 'θ', 'ρ', 'σ', 'τ', 'υ', 'ϑ', 'ω', 'ξ', 'ψ', 'ζ'];
@@ -81,7 +82,7 @@ namespace Calcpad.Wpf
         private readonly UndoManager _undoMan;
         private readonly WebBrowserWrapper _wbWarper;
 
-        private string _readmeFileName;
+        private readonly string _readmeFileName;
         private string DocumentPath { get; set; }
         private string _cfn;
         private string CurrentFileName
@@ -226,7 +227,7 @@ namespace Calcpad.Wpf
 
         public bool SaveStateAndRestart()
         {
-            var tempFile = Path.GetTempFileName();
+            var tempFile = Path.GetRandomFileName();
             File.WriteAllText(tempFile, InputText);
             Properties.Settings.Default.TempFile = tempFile;
             Properties.Settings.Default.FileName = CurrentFileName;
@@ -1432,7 +1433,7 @@ namespace Calcpad.Wpf
         {
             _stringBuilder.Clear();
             var ssf = Math.Round(0.9 * Math.Sqrt(_screenScaleFactor), 2).ToString(CultureInfo.InvariantCulture);
-            _stringBuilder.Append(_htmlWorksheet.Replace("var(--ssf)", ssf));
+            _stringBuilder.Append(_htmlWorksheet.Replace("var(--screen-scale-factor)", ssf));
             _stringBuilder.Append(s);
             _stringBuilder.Append(" </body></html>");
             return _stringBuilder.ToString();
@@ -1976,7 +1977,7 @@ namespace Calcpad.Wpf
 
         private bool GetAndSetInputFields()
         {
-            if (InputText.Contains("%u", StringComparison.OrdinalIgnoreCase))
+            if (InputText.Contains("%u", StringComparison.Ordinal))
             {
                 try
                 {
@@ -2389,7 +2390,7 @@ namespace Calcpad.Wpf
                 var keys = defs.Keys;
                 foreach (var s in keys)
                 {
-                    if (defs[s] < _currentLineNumber)
+                    if (defs[s] < _currentLineNumber && !IsPlot(s))
                     {
                         var item = new ListBoxItem()
                         {
@@ -2404,6 +2405,13 @@ namespace Calcpad.Wpf
                     }
                 }
             }
+
+            bool IsPlot(string s) => s[0] == 'P' && 
+                (s.Equals("PlotWidth", StringComparison.Ordinal) || 
+                 s.Equals("PlotHeight", StringComparison.Ordinal) ||
+                 s.Equals("PlotStep", StringComparison.Ordinal) ||
+                 s.Equals("PlotSVG", StringComparison.Ordinal)
+            );
         }
 
 
@@ -3219,9 +3227,13 @@ namespace Calcpad.Wpf
                         if (Validator.IsKeyword(line, "#include"))
                         {
                             var includeFileName = UserDefined.GetFileName(line);
-                            getLines.Add(fields is null
-                                ? Include(includeFileName, null)
-                                : Include(includeFileName, new()));
+                            includeFileName = Environment.ExpandEnvironmentVariables(includeFileName);
+                            if (!File.Exists(includeFileName))
+                                throw new FileNotFoundException(Core.Messages.File_not_found + ": " + includeFileName);
+                            else
+                                getLines.Add(fields is null
+                                    ? Include(includeFileName, null)
+                                    : Include(includeFileName, new()));
                         }
                         else
                             getLines.Add(line.ToString());

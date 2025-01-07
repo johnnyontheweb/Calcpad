@@ -5,10 +5,45 @@ namespace Calcpad.Core
 {
     internal class RealCalculator : Calculator
     {
-        private static readonly Operator[] Operators;
+        private static readonly Operator[] Operators =
+            [
+                UnitPow,
+                Value.Divide,
+                Value.IntDiv,
+                (in Value a, in Value b) => a % b,
+                Value.Multiply,
+                (in Value a, in Value b) => a - b,
+                (in Value a, in Value b) => a + b,
+                (in Value a, in Value b) => a < b,
+                (in Value a, in Value b) => a > b,
+                (in Value a, in Value b) => a <= b,
+                (in Value a, in Value b) => a >= b,
+                (in Value a, in Value b) => a == b,
+                (in Value a, in Value b) => a != b,
+                (in Value a, in Value b) => a & b,
+                (in Value a, in Value b) => a | b,
+                (in Value a, in Value b) => a ^ b,
+                (in Value _, in Value b) => b
+            ];
         private readonly Function[] _functions;
         private readonly Operator[] _functions2;
-        private static readonly Func<Value[], Value>[] MultiFunctions;
+        private static readonly Func<Value[], Value>[] MultiFunctions =
+            [
+                Min,
+                Max,
+                Sum,
+                SumSq,
+                Srss,
+                Average,
+                Product,
+                Mean,
+                Switch,
+                And,
+                Or,
+                Xor,
+                Gcd,
+                Lcm,
+            ];
         internal override int Degrees
         {
             set => _degrees = value;
@@ -71,48 +106,6 @@ namespace Calcpad.Core
                 UnitRoot,
                 Mod,
                 MandelbrotSet
-            ];
-        }
-
-        static RealCalculator()
-        {
-            Operators =
-            [
-                UnitPow,
-                Value.Divide,
-                Value.IntDiv,
-                (in Value a, in Value b) => a % b,
-                Value.Multiply,
-                (in Value a, in Value b) => a - b,
-                (in Value a, in Value b) => a + b,
-                (in Value a, in Value b) => a < b,
-                (in Value a, in Value b) => a > b,
-                (in Value a, in Value b) => a <= b,
-                (in Value a, in Value b) => a >= b,
-                (in Value a, in Value b) => a == b,
-                (in Value a, in Value b) => a != b,
-                (in Value a, in Value b) => a & b,
-                (in Value a, in Value b) => a | b,
-                (in Value a, in Value b) => a ^ b,
-                (in Value _, in Value b) => b
-            ];
-
-            MultiFunctions =
-            [
-                Min,
-                Max,
-                Sum,
-                SumSq,
-                Srss,
-                Average,
-                Product,
-                Mean,
-                Switch,
-                And,
-                Or,
-                Xor,
-                Gcd,
-                Lcm,
             ];
         }
 
@@ -323,13 +316,18 @@ namespace Calcpad.Core
             return new(Math.Exp(value.Re));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Value Pow(Value value, Value power, bool isUnit) =>
-            new(
+        private static Value Pow(Value value, Value power, bool isUnit)
+        {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Math.Pow(value.Re * u.GetDimensionlessFactor(), power.Re));
+
+            return new(
                 Math.Pow(value.Re, power.Re),
-                Unit.Pow(value.Units, power, isUnit),
+                Unit.Pow(u, power, isUnit),
                 isUnit
             );
+        }
 
         internal static Value Pow(in Value value, in Value power) =>
             Pow(value, power, false);
@@ -337,13 +335,16 @@ namespace Calcpad.Core
         private static Value UnitPow(in Value value, in Value power) =>
             Pow(value, power, value.IsUnit);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Value Sqrt(Value value, bool isUnit)
         {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Math.Sqrt(value.Re * u.GetDimensionlessFactor()));
+
             var result = Math.Sqrt(value.Re);
-            return value.Units is null ?
+            return u is null ?
                 new(result) :
-                new(result, Unit.Root(value.Units, 2, isUnit), isUnit);
+                new(result, Unit.Root(u, 2, isUnit), isUnit);
         }
 
         internal static Value Sqrt(in Value value) =>
@@ -352,13 +353,16 @@ namespace Calcpad.Core
         private static Value UnitSqrt(in Value value) =>
             Sqrt(value, value.IsUnit);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Value Cbrt(Value value, bool isUnit)
         {
+            var u = value.Units;
+            if (u is not null && u.IsDimensionless)
+                return new(Math.Cbrt(value.Re * u.GetDimensionlessFactor()));
+
             var result = Math.Cbrt(value.Re);
-            return value.Units is null ?
+            return u is null ?
                 new(result) :
-                new(result, Unit.Root(value.Units, 3, isUnit), isUnit);
+                new(result, Unit.Root(u, 3, isUnit), isUnit);
         }
 
         private static Value Cbrt(in Value value) =>
@@ -367,17 +371,21 @@ namespace Calcpad.Core
         private static Value UnitCbrt(in Value value) =>
             Cbrt(value, value.IsUnit);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Value Root(in Value value, in Value root, bool isUnit)
         {
             var n = GetRoot(root);
-            var result = int.IsOddInteger(n) && value.Re < 0 ?
-                -Math.Pow(-value.Re, 1d / n) :
-                Math.Pow(value.Re, 1d / n);
+            var u = value.Units;
+            var d = u is not null && u.IsDimensionless ?
+                value.Re * u.GetDimensionlessFactor() :
+                value.Re;
 
-            return value.Units is null ?
+            var result = int.IsOddInteger(n) && d < 0 ?
+                -Math.Pow(-d, 1d / n) :
+                Math.Pow(d, 1d / n);
+
+            return u is null ?
                 new(result) :
-                new(result, Unit.Root(value.Units, n, isUnit), isUnit);
+                new(result, Unit.Root(u, n, isUnit), isUnit);
         }
 
         private static Value Root(in Value value, in Value root) =>

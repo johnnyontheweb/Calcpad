@@ -31,10 +31,8 @@ namespace Calcpad.Core
         private readonly Output _output;
         private readonly List<Equation> _equationCache = [];
         private IValue _result;
-        private bool _hasVariables;
         private int _assignmentIndex;
         private bool _isCalculated;
-        private bool _isPlotting;
         private int _isSolver;
         private Unit _targetUnits;
         private int _functionDefinitionIndex;
@@ -59,17 +57,15 @@ namespace Calcpad.Core
         internal Unit Units { get; private set; }
         internal bool IsCanceled { get; private set; }
         internal bool IsEnabled { get; set; } = true;
-        internal bool IsPlotting
-        {
-            set => _isPlotting = value;
-            get => _isPlotting;
-        }
+        internal bool IsPlotting { get; set; }
+        internal bool IsCalculation { get; set; }
         internal bool Split { get; set; }
         internal bool ShowWarnings { get; set; } = true;
         public int Degrees { set => _calc.Degrees = value; }
         internal int PlotWidth => (int)GetSettingsVariable("PlotWidth", 500);
         internal int PlotHeight => (int)GetSettingsVariable("PlotHeight", 300);
         internal int PlotStep => (int)GetSettingsVariable("PlotStep", 0);
+        internal bool PlotSVG => GetSettingsVariable("PlotSVG", 0) != 0d;
 
         public const char DecimalSymbol = '.'; //CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator[0];
         internal Complex Result
@@ -79,16 +75,10 @@ namespace Calcpad.Core
                 if (_result is Value value)
                     return value.Complex;
 
-                if (_result is Vector vector)
-                {
-                    if (vector.Length >= 1)
-                        return vector[0].Complex;
-                }
-                if (_result is Matrix matrix)
-                {
-                    if (matrix.RowCount >= 1 && matrix.ColCount >= 1)
-                        return matrix[0, 0].Complex;
-                }   
+                if (_result is Vector vector && vector.Length >= 1)
+                    return vector[0].Complex;
+                if (_result is Matrix matrix && matrix.RowCount >= 1 && matrix.ColCount >= 1)
+                    return matrix[0, 0].Complex;
                 return 0;
             }
         }
@@ -208,10 +198,13 @@ namespace Calcpad.Core
             _isCalculated = false;
             _functionDefinitionIndex = -1;
             var input = _input.GetInput(expression, allowAssignment);
-            new SyntaxAnalyser(_functions).Check(input, IsEnabled, out var isFunctionDefinition);
-            _input.OrderOperators(input, isFunctionDefinition || _isSolver > 0 || _isPlotting, _assignmentIndex);
+            new SyntaxAnalyser(_functions).Check(input, IsCalculation && IsEnabled, out var isFunctionDefinition);
+            _input.OrderOperators(input, isFunctionDefinition || _isSolver > 0 || IsPlotting, _assignmentIndex);
             if (isFunctionDefinition)
             {
+                if (_isSolver > 0)
+                    Throw.FunctionDefinitionInSolverException();
+
                 _rpn = null;
                 AddFunction(input);
             }
@@ -235,17 +228,15 @@ namespace Calcpad.Core
 
         public int WriteEquationToCache(bool isVisible = true)
         {
-            {
-                if (_rpn is null)
-                    return -1;
+            if (_rpn is null)
+                return -1;
 
-                Func<IValue> f = null;
-                if (!isVisible)
-                    f = _compiler.Compile(_rpn, true);
+            Func<IValue> f = null;
+            if (!isVisible)
+                f = _compiler.Compile(_rpn, true);
 
-                _equationCache.Add(new Equation(_rpn, _targetUnits, f));
-                return _equationCache.Count - 1;
-            }
+            _equationCache.Add(new Equation(_rpn, _targetUnits, f));
+            return _equationCache.Count - 1;
         }
 
         private void PurgeCache()
@@ -276,9 +267,13 @@ namespace Calcpad.Core
             {
                 bool isAssignment = _rpn[0].Type == TokenTypes.Variable && _rpn[^1].Content == "=";
                 _calc.ReturnAngleUnits = GetSettingsVariable("ReturnAngleUnits", 0) != 0d;
+                Func<IValue> f = null;
                 if (!isVisible && cacheId >= 0 && cacheId < _equationCache.Count)
+                    f = _equationCache[cacheId].Function;
+
+                if (f is not null)
                 {
-                    _result = _equationCache[cacheId].Function();
+                    _result = f();
                     if (isAssignment && _rpn[0] is VariableToken vt)
                     {
                         ref var v = ref vt.Variable.ValueByRef();
@@ -360,11 +355,10 @@ namespace Calcpad.Core
                         else if (t.Type != TokenTypes.Divisor)
                             Throw.IvalidFunctionTokenException(t.Content);
 
-                        if (pt.Type == t.Type || pt.Type == TokenTypes.BracketLeft && t.Type == TokenTypes.Divisor)
-                        {
-                            if (t.Type == TokenTypes.Divisor)
-                                Throw.MissingFunctionParameterException();
-                        }
+                        if ((pt.Type == t.Type || 
+                            pt.Type == TokenTypes.BracketLeft && 
+                            t.Type == TokenTypes.Divisor) && t.Type == TokenTypes.Divisor)
+                            Throw.MissingFunctionParameterException();
                         pt = t;
                     }
                     if (input.Count != 0 && input.Dequeue().Content == "=")
@@ -487,11 +481,52 @@ namespace Calcpad.Core
                 }
             }
         }
+
+        public string ResultAsVal
+        {
+            get
+            {
+                if (_result is Value value)
+                    return FormatResultValue(value);
+
+                var sb = new StringBuilder();
+                sb.Append('[');
+                if (_result is Vector vector)
+                    for (int i = 0, len = vector.Length - 1; i <= len; ++i)
+                    {
+                        sb.Append(FormatResultValue(vector[i]));
+                        if (i < len)
+                            sb.Append(", ");
+                    }
+                else if (_result is Matrix matrix)
+                    for (int i = 0, m = matrix.RowCount - 1; i <= m; ++i)
+                    {
+                        sb.Append('[');
+                        for (int j = 0, n = matrix.ColCount - 1; j <= n; ++j)
+                        {
+                            sb.Append(FormatResultValue(matrix[i, j]));
+                            if (j < n)
+                                sb.Append(", ");
+                        }
+                        sb.Append(']');
+                        if (i < m)
+                            sb.Append(", ");
+                    }
+
+                sb.Append(']');
+                return sb.ToString();
+
+                string FormatResultValue(in Value value) =>
+                    Core.Complex.Format(value.Complex, _settings.Decimals, OutputWriter.OutputFormat.Text);
+            }
+        }
+
+
+
         public override string ToString() => _output.Render(OutputWriter.OutputFormat.Text);
         public string ToHtml() => _output.Render(OutputWriter.OutputFormat.Html);
         public string ToXml() => _output.Render(OutputWriter.OutputFormat.Xml);
 
-        [Serializable]
         public class MathParserException : Exception
         {
             internal MathParserException(string message) : base(message) { }

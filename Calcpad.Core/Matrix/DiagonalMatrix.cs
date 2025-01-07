@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Calcpad.Core
@@ -72,7 +71,7 @@ namespace Calcpad.Core
         {
             var c = a.Clone();
             var diag = b._rows[0];
-            for (int i = b._rowCount - 1; i >= 0; --i)
+            for (int i = a.RowCount - 1; i >= 0; --i)
                 c._rows[i] = a._rows[i] * diag;
 
             return c;
@@ -90,10 +89,11 @@ namespace Calcpad.Core
             return det;
         }
 
-        protected override Matrix GetLU(out int[] indexes, out double minPivot)
+        protected override Matrix GetLU(out int[] indexes, out double minPivot, out double det)
         {
             indexes = new int[_rowCount];
             minPivot = double.MaxValue;
+            det = 1d;
             var diag = _rows[0];
             for (int i = 0; i < _rowCount; ++i)
             {

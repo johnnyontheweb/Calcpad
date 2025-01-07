@@ -219,7 +219,7 @@ namespace Calcpad.Core
                 {
                     var nf2 = lineContent.LastIndexOf('}');
                     if (nf2 < 0)
-                        AppendError(lineContent.ToString(), "Brackets not closed.");
+                        AppendError(lineContent.ToString(), Messages.BracketsNotClosed);
                     else
                     {
                         SplitEnumerator split = lineContent[(nf1 + 2)..nf2].EnumerateSplits(';');
@@ -567,11 +567,8 @@ namespace Calcpad.Core
                             }
                             else if (inputChar == '{')
                                 continue;
-                            else if (c != ' ')
-                            {
-                                if (AddField(item[j0..j]))
-                                    j0 = j;
-                            }
+                            else if (c != ' ' && AddField(item[j0..j]))
+                                j0 = j;
                         }
                         if (!AddField($"{item[j0..]} "))
                             sb.Append($"{item[j0..]}");

@@ -142,6 +142,15 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Brackets not closed..
+        /// </summary>
+        public static string BracketsNotClosed {
+            get {
+                return ResourceManager.GetString("BracketsNotClosed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Calculations not active..
         /// </summary>
         public static string Calculations_not_active {
@@ -453,6 +462,15 @@ namespace Calcpad.Core {
         public static string Function_redefined {
             get {
                 return ResourceManager.GetString("Function_redefined", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Function definition not allowed in solver block..
+        /// </summary>
+        public static string FunctionDefinitionNotAllowedInSolverBlock {
+            get {
+                return ResourceManager.GetString("FunctionDefinitionNotAllowedInSolverBlock", resourceCulture);
             }
         }
         
@@ -1258,11 +1276,11 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The output is longer than 20000 lines. The rest will be skipped..
+        ///   Looks up a localized string similar to The output is longer than {0} lines. The rest will be skipped..
         /// </summary>
-        public static string The_output_is_longer_than_20000_lines_The_rest_will_be_skipped {
+        public static string The_output_is_longer_than_0_lines_The_rest_will_be_skipped {
             get {
-                return ResourceManager.GetString("The_output_is_longer_than_20000_lines_The_rest_will_be_skipped", resourceCulture);
+                return ResourceManager.GetString("The_output_is_longer_than_0_lines_The_rest_will_be_skipped", resourceCulture);
             }
         }
         
