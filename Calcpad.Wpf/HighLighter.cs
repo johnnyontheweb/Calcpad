@@ -302,6 +302,7 @@ namespace Calcpad.Wpf
             "vec2diag",
             "diag2vec",
             "vec2col",
+            "vec2row",
             "join_cols",
             "join_rows",
             "augment",
@@ -438,6 +439,7 @@ namespace Calcpad.Wpf
             "$map"
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
+        internal bool All;
         internal static readonly SearchValues<char> Comments = SearchValues.Create("'\"");
         private TagHelper _tagHelper;
         private ParserState _state;
@@ -462,28 +464,38 @@ namespace Calcpad.Wpf
 
         private static void InitLocalValraibles(Paragraph p)
         {
-            var b = p;
-            while (true)
-            {
-                var pb = (Paragraph)b.PreviousBlock;
-                if (pb is null)
-                    break;
-
-                var inline = (Run)pb.Inlines.LastInline;
-                if (inline is not null && inline.Text.AsSpan().EndsWith("_"))
-                    b = pb;
-                else
-                    break;
-            }
             LocalVariables.Clear();
-            if (ReferenceEquals(b, p) || b is null)
-                return;
-
-            foreach (Run r in b.Inlines.Cast<Run>())
+            var b = p;
+            var isCollect = false;
+            Run run = null;
+            while (b is not null)
             {
-                var s = r.Text;
-                if (string.Equals(s, " = "))
-                    GetLocalVariables(r, false);
+                if (isCollect)
+                    GetLocalVariables(run, false);
+                else
+                {
+                    var runs = b.Inlines.Cast<Run>();
+                    foreach (Run r in runs)
+                    {
+                        var s = r.Text.AsSpan().Trim();
+                        if (!s.IsEmpty && s[0] != '\'' &&  s.Contains('='))
+                        {
+                            isCollect = true;
+                            if (!ReferenceEquals(b, p))
+                                GetLocalVariables(r, false);
+
+                            break;
+                        }
+                    }
+                }
+
+                b = b.PreviousBlock as Paragraph;
+                if (b is null)
+                    return;
+
+                run = b.Inlines.LastInline as Run;
+                if (run is null || !run.Text.AsSpan().EndsWith("_"))
+                    return;
             }
         }
 
@@ -495,7 +507,8 @@ namespace Calcpad.Wpf
             InitLocalValraibles(p);
             var isCommand = false;
             var commandCount = 0;
-            foreach (Run r in p.Inlines.Cast<Run>())
+            var runs = p.Inlines.Cast<Run>();
+            foreach (Run r in runs)
             {
                 var s = r.Text;
                 var t1 = r.Foreground == Colors[(int)Types.Function] &&
@@ -521,7 +534,7 @@ namespace Calcpad.Wpf
                 else if (string.Equals(s, " = "))
                     GetLocalVariables(r, commandCount > 0);
 
-                var isFunction = r.NextInline is not null && ((Run)r.NextInline).Text == "(";
+                var isFunction = r.NextInline is not null && (r.NextInline as Run).Text == "(";
                 bool IsDefined() => isFunction ? IsFunction(s, line) : IsVariable(s, line);
                 switch (t1)
                 {
@@ -573,11 +586,10 @@ namespace Calcpad.Wpf
 
             InitParagraph(p);
             text ??= new TextRange(p.ContentStart, p.ContentEnd).Text;
+            InitLocalValraibles(p);
             p.Inlines.Clear();
             InitState(p, text, line);
-            InitLocalValraibles(p);
             _tagHelper = new();
-            LocalVariables.Clear();
             _hasTargetUnitsDelimiter = false;
             _allowUnaryMinus = true;
             _builder.Clear();
@@ -588,6 +600,14 @@ namespace Calcpad.Wpf
             for (int i = 0, len = text.Length; i < len; ++i)
             {
                 var c = text[i];
+                if (_state.CurrentType != Types.Comment)
+                {
+                    if (char.IsWhiteSpace(c))
+                        c = ' ';
+                    else if (c == '·')
+                        c = '*';
+                }
+
                 if (c == '_' && i == len - 1)
                 {
                     if (i > 0 && text[i - 1] == ' ' || _builder.Length == 0)
@@ -703,9 +723,7 @@ namespace Calcpad.Wpf
                     Append(Types.Error);
                     return;
                 }
-
                 _state.RetainType();
-
                 if (!Validator.IsWhiteSpace(c))
                     _state.IsLeading = false;
 
@@ -727,6 +745,15 @@ namespace Calcpad.Wpf
                 text = new TextRange(p.ContentStart, p.ContentEnd).Text;
                 Defined.Get(text.AsSpan(), line);
                 Parse(p, isComplex, line, text);
+            }
+            if (!All)
+            {
+                var r = p.Inlines.LastInline as Run;
+                if (r is not null && r.Text.AsSpan().EndsWith(" _"))
+                {
+                    var next = p.NextBlock as Paragraph;
+                    Parse(next, isComplex, line + 1);
+                }
             }
         }
 
@@ -1074,7 +1101,7 @@ namespace Calcpad.Wpf
             Append(isPercent ? Types.Units : Types.Operator);
             _state.CurrentType = Types.Operator;
             if (c == '=')
-                GetLocalVariables((Run)_state.Paragraph.Inlines.LastInline, _state.CommandCount > 0);
+                GetLocalVariables(_state.Paragraph.Inlines.LastInline,  _state.CommandCount > 0);
         }
 
         private bool ParseMacroContent(char c, int i, int len)
@@ -1211,7 +1238,7 @@ namespace Calcpad.Wpf
                 s = FormatOperator(s);
                 if (s[0] == ' ')
                 {
-                    Run r = (Run)_state.Paragraph.Inlines.LastInline;
+                    var r = _state.Paragraph.Inlines.LastInline as Run;
                     if (r is not null && r.Text == " ")
                         _state.Paragraph.Inlines.Remove(r);
                 }
@@ -1236,7 +1263,7 @@ namespace Calcpad.Wpf
             {
                 if (s == "=")
                 {
-                    Run r = (Run)_state.Paragraph.Inlines.LastInline;
+                    var r = _state.Paragraph.Inlines.LastInline as Run;
                     switch (r.Text)
                     {
                         case " = ": r.Text = " ≡ "; return true;
@@ -1247,7 +1274,7 @@ namespace Calcpad.Wpf
                 }
                 else if (s == "&")
                 {
-                    Run r = (Run)_state.Paragraph.Inlines.LastInline;
+                    var r = _state.Paragraph.Inlines.LastInline as Run;
                     if (r.Text == "&")
                     {
                         r.Text = " ∧ ";
@@ -1258,7 +1285,7 @@ namespace Calcpad.Wpf
                 }
                 else if (s == "|")
                 {
-                    Run r = (Run)_state.Paragraph.Inlines.LastInline;
+                    var r = _state.Paragraph.Inlines.LastInline as Run;
                     if (r.Text == "|")
                     {
                         r.Text = " ∨ ";
@@ -1317,7 +1344,7 @@ namespace Calcpad.Wpf
             }
             else if (t == Types.Variable)
             {
-                var r = (Run)_state.Paragraph.Inlines.LastInline;
+                var r = _state.Paragraph.Inlines.LastInline as Run;
                 var pt = r is null ? Types.None : GetTypeFromColor(r.Foreground);
                 if (pt == Types.Variable || pt == Types.Units)
                 {
@@ -1456,7 +1483,7 @@ namespace Calcpad.Wpf
             var foreground = Colors[(int)Types.Variable];
             while (inline != null)
             {
-                s = ((Run)inline).Text.Trim();
+                s = (inline as Run).Text.Trim();
                 if (Validator.IsVariable(s))
                 {
                     inline.Background = null;
@@ -1464,26 +1491,26 @@ namespace Calcpad.Wpf
                     name = s;
                     break;
                 }
-                inline = (Run)inline.PreviousInline;
+                inline = inline.PreviousInline;
             }
             if (!string.IsNullOrEmpty(name))
             {
-                inline = (Run)inline.PreviousInline;
+                inline = inline.PreviousInline;
                 while (inline != null)
                 {
-                    s = ((Run)inline).Text.Trim();
+                    s = (inline as Run).Text.Trim();
                     if (s == "@")
                         break;
 
-                    inline = (Run)inline.PreviousInline;
+                    inline = inline.PreviousInline;
                 }
                 if (s == "@")
                 {
                     var bracketCount = 1;
-                    inline = (Run)inline.PreviousInline;
+                    inline = inline.PreviousInline;
                     while (inline != null)
                     {
-                        s = ((Run)inline).Text.Trim();
+                        s = (inline as Run).Text.Trim();
                         if (s == "{")
                             --bracketCount;
                         else if (s == "}")
@@ -1509,7 +1536,7 @@ namespace Calcpad.Wpf
             var foreground = Colors[(int)Types.Variable];
             while (inline != null)
             {
-                var s = ((Run)inline).Text.Trim();
+                var s = (inline as Run).Text.Trim();
                 if (string.Equals(s, "("))
                     return;
 

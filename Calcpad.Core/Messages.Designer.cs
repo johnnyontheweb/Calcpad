@@ -70,6 +70,15 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to  must be real..
+        /// </summary>
+        public static string _must_be_real {
+            get {
+                return ResourceManager.GetString("_must_be_real", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to  must be scalar..
         /// </summary>
         public static string _must_be_scalar {
@@ -106,7 +115,7 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Argument out of range for n!..
+        ///   Looks up a localized string similar to Argument out of range for n! ..
         /// </summary>
         public static string Argument_out_of_range_for_n_factorial {
             get {
@@ -763,6 +772,15 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Limit.
+        /// </summary>
+        public static string Limit {
+            get {
+                return ResourceManager.GetString("Limit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Limits out of range: [{0}; {1}]..
         /// </summary>
         public static string Limits_out_of_range__0____1__ {
@@ -1087,7 +1105,7 @@ namespace Calcpad.Core {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Repeat block not closed. Missing loop..
+        ///   Looks up a localized string similar to Repeat block not closed. Missing &quot;#loop#..
         /// </summary>
         public static string repeat_block_not_closed_Missing_loop {
             get {
@@ -1371,6 +1389,15 @@ namespace Calcpad.Core {
         public static string Units_cannon_be_raised_to_complex_power {
             get {
                 return ResourceManager.GetString("Units_cannon_be_raised_to_complex_power", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Value.
+        /// </summary>
+        public static string Value {
+            get {
+                return ResourceManager.GetString("Value", resourceCulture);
             }
         }
         

@@ -1,5 +1,5 @@
 ﻿using System;
-
+using System.Collections.Generic;
 namespace Calcpad.Core
 {
     internal static class Throw
@@ -15,6 +15,7 @@ namespace Calcpad.Core
             Variable,
             IndexTarget,
             Limit,
+            Value,
         }
 
         private static string ItemToString(Items item) =>
@@ -28,6 +29,8 @@ namespace Calcpad.Core
                 Items.Result => Messages.Result,
                 Items.Variable => Messages.Variable,
                 Items.IndexTarget => Messages.Index_target,
+                Items.Limit => Messages.Limit,
+                Items.Value => Messages.Value,
                 _ => throw new ArgumentException(Messages.Invalid_item),
             };
 
@@ -238,6 +241,10 @@ namespace Calcpad.Core
         internal static void MustBeScalarException(Items item) =>
             New(ItemToString(item) + Messages._must_be_scalar);
 
+
+        internal static void MustBeRealException(Items item) =>
+            New(ItemToString(item) + Messages._must_be_real);
+
         internal static void MustBePositiveIntegerException(Items item) =>
             New(ItemToString(item) + Messages._must_be_positive_integer);
 
@@ -305,7 +312,6 @@ namespace Calcpad.Core
 
         internal static void MatrixNotHighException() =>
             New(Messages.The_number_of_matrix_rows_must_be_greater_than_or_equal_to_the_number_of_columns);
-
 
         internal static void FunctionDefinitionInSolverException() =>
             New(Messages.FunctionDefinitionNotAllowedInSolverBlock);

@@ -192,15 +192,22 @@ namespace Calcpad.Core
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
 
-            private static readonly MethodInfo ExpandValuesMethod =
+            private static readonly MethodInfo ExpandRealValuesMethod =
                 typeof(IValue).GetMethod(
-                    nameof(IValue.ExpandValues),
+                    nameof(IValue.ExpandRealValues),
                     BindingFlags.Static | BindingFlags.NonPublic
                 );
 
             private static readonly MethodInfo AsValueMethod =
                 typeof(IValue).GetMethod(
                     nameof(IValue.AsValue),
+                    BindingFlags.Static | BindingFlags.NonPublic
+                );
+
+
+            private static readonly MethodInfo AsRealMethod =
+                typeof(IValue).GetMethod(
+                    nameof(IValue.AsReal),
                     BindingFlags.Static | BindingFlags.NonPublic
                 );
 
@@ -225,13 +232,19 @@ namespace Calcpad.Core
             private static readonly ConstructorInfo VectorConstructor =
                 typeof(Vector).GetConstructor(
                     BindingFlags.Instance | BindingFlags.NonPublic,
-                    [typeof(Value[])]
+                    [typeof(RealValue[])]
                 );
 
             private static readonly MethodInfo JoinRowsMethod =
                 typeof(MatrixCalculator).GetMethod(
                     nameof(MatrixCalculator.JoinRows),
                     BindingFlags.Static | BindingFlags.NonPublic
+                );
+
+            private static readonly MethodInfo AssignVariableMethod =
+                typeof(Variable).GetMethod(
+                    nameof(Variable.Assign),
+                    BindingFlags.Instance | BindingFlags.NonPublic
                 );
         }
     }

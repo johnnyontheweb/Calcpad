@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq.Expressions;
 
 namespace Calcpad.Core
 {
@@ -50,7 +51,7 @@ namespace Calcpad.Core
 
         private static void InitKeyWordStrings()
         {
-            KeywordStrings = Enum.GetNames(typeof(Keyword));
+            KeywordStrings = Enum.GetNames<Keyword>();
             for (int i = 0, len = KeywordStrings.Length; i < len; ++i)
                 KeywordStrings[i] = '#' + KeywordStrings[i].ToLowerInvariant();
 
@@ -275,10 +276,23 @@ namespace Calcpad.Core
                             {
                                 _parser.Parse(startExpr);
                                 _parser.Calculate();
-                                var start = new Value(_parser.Result, _parser.Units);
+                                var r1 = _parser.Result;
+                                var u1 = _parser.Units;
                                 _parser.Parse(endExpr);
                                 _parser.Calculate();
-                                var end = new Value(_parser.Result, _parser.Units);
+                                var r2 = _parser.Result;
+                                var u2 = _parser.Units;
+                                IScalarValue start, end;
+                                if (r1.IsReal && r2.IsReal)
+                                {
+                                    start = new RealValue(r1.Re, u1);
+                                    end = new RealValue(r2.Re, u2);
+                                }
+                                else
+                                {
+                                    start = new ComplexValue(r1, u1);
+                                    end = new ComplexValue(r2, u2);
+                                }
                                 _loops.Push(new ForLoop(_currentLine, start, end, varName, _condition.Id));
                                 _parser.SetVariable(varName, start);
                             }
@@ -292,7 +306,7 @@ namespace Calcpad.Core
                     {
                         try
                         {
-                            var varHtml = new HtmlWriter().FormatVariable(varName, string.Empty);
+                            var varHtml = new HtmlWriter().FormatVariable(varName, string.Empty, false);
                             _parser.Parse(startExpr);
                             var startHtml = _parser.ToHtml();
                             _parser.Parse(endExpr);
@@ -323,14 +337,17 @@ namespace Calcpad.Core
                 {
                     try
                     {
-                        _parser.Parse(expression);
+                        var commentStart = expression.IndexOf('\'');
+                        var condition = commentStart < 0 ? expression : expression[..commentStart];    
+                        _parser.Parse(condition);
                         _parser.Calculate();
                         _condition.SetCondition(Keyword.While - Keyword.If);
                         _condition.Check(_parser.Result);
                         if (_condition.IsSatisfied)
                         {
                             _loops.Push(new WhileLoop(_currentLine, expression.ToString(), _condition.Id));
-                            ParseWhileResidualExpressions(expression, false);
+                            if (commentStart >= 0)
+                                ParseTokens(GetTokens(expression[commentStart..]), false, false);
                         }
                     }
                     catch (MathParser.MathParserException ex)
@@ -367,35 +384,8 @@ namespace Calcpad.Core
                         var next = _loops.Peek();
                         if (next.Id != _condition.Id)
                             AppendError(s.ToString(), Messages.Entangled_if__end_if__and_repeat__loop_blocks, _currentLine);
-                        else
-                        {
-                            if (next is ForLoop forLoop)
-                            {
-                                var value = _parser.GetVariable(forLoop.VarName);
-                                var delta = forLoop.End - forLoop.Start;
-                                value += new Value(new Complex(Math.Sign(delta.Re), Math.Sign(delta.Im)), delta.Units);
-                                _parser.SetVariable(forLoop.VarName, value);
-
-                            }
-                            else if (next is WhileLoop whileLoop)
-                            {
-                                var condition = whileLoop.Condition.AsSpan();
-                                _parser.Parse(condition);
-                                _parser.Calculate();
-                                _condition.Check(_parser.Result);
-                                if (_condition.IsSatisfied)
-                                    ParseWhileResidualExpressions(condition, false);
-                                else
-                                {
-                                    _condition.SetCondition(Condition.RemoveConditionKeyword);
-                                    next.Break();
-                                }
-                            }
-                            if (next.Iterate(ref _currentLine))
-                                _parser.ResetStack();
-                            else
-                                _loops.Pop();
-                        }
+                        else if(!Iterate(next, true))
+                            _loops.Pop();
                     }
                 }
                 else if (_condition.IsLoop)
@@ -405,15 +395,52 @@ namespace Calcpad.Core
                 _sb.Append($"</div><p{HtmlId} class=\"cond\">#loop</p>");
         }
 
-        private void ParseWhileResidualExpressions(ReadOnlySpan<char> condition, bool isOutput)
+        private bool Iterate(Loop loop, bool removeWhileCondition)
         {
-            var commentIndex = condition.IndexOfAny(['\'', '"']);
-            if (commentIndex > -1 && commentIndex < condition.Length - 1)
+            if (loop is ForLoop forLoop)
             {
-                condition = condition[commentIndex..];
-                var tokens = GetTokens(condition);
-                ParseTokens(tokens, isOutput, false);
+                var value = _parser.GetVariable(forLoop.VarName);
+                var delta = forLoop.End - forLoop.Start;
+                var a = Math.Sign(delta.Re);
+                if (delta.IsReal)
+                    value += new RealValue(a, delta.Units);
+                else
+                {
+                    var b = Math.Sign(delta.Im);
+                    value += new ComplexValue(a, b, delta.Units);
+                }
+                _parser.SetVariable(forLoop.VarName, value);
             }
+            else if (loop is WhileLoop whileLoop)
+            {
+                var expression = whileLoop.Condition;
+                var commentStart = expression.IndexOfAny(['\'', '"']);
+                if (commentStart < 0)
+                    commentStart = expression.Length;
+
+                var condition = expression.AsSpan(0, commentStart);
+                _parser.Parse(condition);
+                _parser.Calculate();
+                _condition.Check(_parser.Result);
+                if (_condition.IsSatisfied)
+                {
+                    if (commentStart < expression.Length - 1)
+                        ParseTokens(GetTokens(expression.AsSpan(commentStart)), false, false);
+                }
+                else 
+                {
+                    if (removeWhileCondition) 
+                        _condition.SetCondition(Condition.RemoveConditionKeyword);
+
+                    loop.Break();
+                }
+            }
+            if (loop.Iterate(ref _currentLine))
+            {
+                _parser.ResetStack();
+                return true;
+            }
+            return false;
         }
 
         private bool ParseKeywordBreak()
@@ -445,11 +472,12 @@ namespace Calcpad.Core
                     else
                     {
                         var loop = _loops.Peek();
-                        while (_condition.Id > loop.Id)
-                            _condition.SetCondition(Condition.RemoveConditionKeyword);
-                        loop.Iterate(ref _currentLine);
+                        if (Iterate(loop, false))
+                            while (_condition.Id > loop.Id)
+                                _condition.SetCondition(Condition.RemoveConditionKeyword);
+                        else
+                            loop.Break();
                     }
-
                 }
             }
             else if (_isVisible)

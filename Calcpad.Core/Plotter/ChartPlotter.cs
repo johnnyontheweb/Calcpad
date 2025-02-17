@@ -171,7 +171,7 @@ namespace Calcpad.Core
             double x = p2.X - p1.X;
             double y = p2.Y - p1.Y;
             double l = Math.Sqrt(x * x + y * y);
-            if (l == 0)
+            if (l == 0d)
                 return new Node();
 
             return new Node(x / l, y / l);
@@ -181,12 +181,12 @@ namespace Calcpad.Core
         {
             Parser.BreakIfCanceled();
             _var.SetNumber(t);
-            var x = ConvertValue(IValue.AsValue((fx?.Invoke() ?? _var.Value)), ref _xUnits);
-            var y = ConvertValue(IValue.AsValue(fy()), ref _yUnits);
+            var x = ConvertValue(IValue.AsReal((fx?.Invoke() ?? _var.Value)), ref _xUnits);
+            var y = ConvertValue(IValue.AsReal(fy()), ref _yUnits);
             return new Node(x, y, t);
         }
 
-        static double ConvertValue(Value v, ref Unit u)
+        static double ConvertValue(RealValue v, ref Unit u)
         {
             if (u is null)
                 u = v.Units;
@@ -197,10 +197,10 @@ namespace Calcpad.Core
                     if (!Unit.IsConsistent(u, v.Units))
                         Throw.InconsistentUnitsException(Unit.GetText(u), Unit.GetText(v.Units));
 
-                    return v.Re * v.Units.ConvertTo(u);
+                    return v.D * v.Units.ConvertTo(u);
                 }
             }
-            return v.Re;
+            return v.D;
         }
 
         private static void GetPngPoints(Chart[] charts, double x0, double y0, double xs, double ys)

@@ -6,7 +6,8 @@ namespace Calcpad.Core
     {
         private readonly Matrix _matrix;
         private readonly int _col;
-        internal override Value this[int index]
+
+        internal override RealValue this[int index]
         {
             get => _matrix[index, _col];
             set => _matrix[index, _col] = value;
@@ -21,49 +22,43 @@ namespace Calcpad.Core
 
         internal override int Length => _size;
 
-        internal override ref Value ValueByRef(int index)
+        internal override ref RealValue ValueByRef(int index)
         {
-            if (_matrix is ColumnMatrix cm)
-                return ref cm._rows[0].ValueByRef(index);
-
-            if (_matrix is DiagonalMatrix dm)
+            switch (_matrix)
             {
-                if (index != _col)
-                    Throw.IndexOutOfRangeException(index.ToString());
+                case ColumnMatrix cm:
+                    return ref cm._rows[0].ValueByRef(index);
+                case DiagonalMatrix dm:
+                    if (index != _col)
+                        Throw.IndexOutOfRangeException(index.ToString());
 
-                return ref dm._rows[index].ValueByRef(0);
+                    return ref dm._rows[index].ValueByRef(0);
+                case SymmetricMatrix sm:
+                    if (index <= _col)
+                        return ref sm._rows[index].ValueByRef(_col - index);
 
+                    return ref sm._rows[_col].ValueByRef(index - _col);
+                case LowerTriangularMatrix ltm:
+                    if (index < _col)
+                        Throw.IndexOutOfRangeException(index.ToString());
+
+                    return ref ltm._rows[index].ValueByRef(_col);
+                case UpperTriangularMatrix utm:
+                    if (index > _col)
+                        Throw.IndexOutOfRangeException(index.ToString());
+
+                    return ref utm._rows[index].ValueByRef(_col - index);
+                default:
+                    return ref _matrix._rows[index].ValueByRef(_col);
             }
-            if (_matrix is SymmetricMatrix sm)
-            {
-                if (index <= _col)
-                    return ref sm._rows[index].ValueByRef(_col - index);
-
-                return ref sm._rows[_col].ValueByRef(index - _col);
-            }
-            if (_matrix is LowerTriangularMatrix ltm)
-            {
-                if (index < _col)
-                    Throw.IndexOutOfRangeException(index.ToString());
-
-                return ref ltm._rows[index].ValueByRef(_col);
-            }
-            if (_matrix is UpperTriangularMatrix utm)
-            {
-                if (index > _col)
-                    Throw.IndexOutOfRangeException(index.ToString());
-
-                return ref utm._rows[index].ValueByRef(_col - index);
-            }
-            return ref _matrix._rows[index].ValueByRef(_col);
         }
 
-        internal override Value[] Values
+        internal override RealValue[] Values
         {
             get
             {
                 var m = Length;
-                var values = new Value[m];
+                var values = new RealValue[m];
                 for (int i = m - 1; i >= 0; --i)
                     values[i] = _matrix[i, _col];
 
@@ -71,7 +66,7 @@ namespace Calcpad.Core
             }
         }
 
-        internal override Vector Fill(Value value)
+        internal override Vector Fill(RealValue value)
         {
             for (int i = Length - 1; i >= 0; --i)
                 _matrix[i, _col] = value;

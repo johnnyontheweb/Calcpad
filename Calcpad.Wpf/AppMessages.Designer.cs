@@ -146,6 +146,15 @@ namespace Calcpad.Wpf {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to \nYour data was saved both to clipboard and temp file: .
+        /// </summary>
+        public static string NYourDataWasSavedBothToClipboardAndTempFile {
+            get {
+                return ResourceManager.GetString("NYourDataWasSavedBothToClipboardAndTempFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to 
         ///
         ///There is no unsaved data. If the problem persists, please contact proektsoft.bg@gmail.com..

@@ -13,7 +13,7 @@ using System.Xml.Serialization;
 namespace Calcpad.Cli
 {
     class Program
-    {
+    {   
         private static readonly string _currentCultureName = "en";
         private static readonly char _dirSeparator = Path.DirectorySeparatorChar;
         const string Prompt = " |> ";
@@ -480,6 +480,8 @@ namespace Calcpad.Cli
                                 .Replace("!=", "≠")
                                 .Replace("<=", "≤")
                                 .Replace(">=", "≥")
+                                .Replace("||", "∨")
+                                .Replace("&&", "∧")
                                 .Replace("%%", "⦼");
                             mp.Parse(s);
                             mp.Calculate();

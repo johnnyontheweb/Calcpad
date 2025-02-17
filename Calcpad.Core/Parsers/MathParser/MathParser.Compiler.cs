@@ -52,7 +52,7 @@ namespace Calcpad.Core
                     {
                         var v = vt.Variable;
                         if (!v.IsInitialized)
-                            v.Assign(Value.Zero);
+                            v.Assign(RealValue.Zero);
                     }
                 }
                 for (int i = 0; i < len; ++i)
@@ -196,8 +196,8 @@ namespace Calcpad.Core
                 if (t.Type == TokenTypes.Unit)
                 {
                     var v = t is ValueToken vt ?
-                        vt.Value :
-                        (Value)((VariableToken)t).Variable.ValueByRef();
+                        (RealValue)vt.Value :
+                        (RealValue)((VariableToken)t).Variable.ValueByRef();
 
                     return Expression.Constant(v, typeof(IValue));
                 }
@@ -239,11 +239,11 @@ namespace Calcpad.Core
 
                 if (t.Content == NegateString)
                 {
-                    if (_parser._settings.IsComplex)
-                        return Expression.Call(
-                            EvaluateFunctionMethod,
-                        Expression.Constant(_matrixCalc),
-                        Expression.Constant(t.Index), a);
+                    //if (_parser._settings.IsComplex)
+                    //    return Expression.Call(
+                    //        EvaluateFunctionMethod,
+                    //    Expression.Constant(_matrixCalc),
+                    //    Expression.Constant(t.Index), a);
 
                     return Expression.Negate(a);
                 }
@@ -285,7 +285,7 @@ namespace Calcpad.Core
                     {
                         if (a.NodeType == ExpressionType.Block)
                         {
-                            b = Expression.Convert(b, typeof(Value));
+                            b = Expression.Call(AsRealMethod, b, ValueItem);
                             BlockExpression c = (BlockExpression)a;
                             a = c.Expressions[1];
                             if (a.NodeType == ExpressionType.Convert)
@@ -295,13 +295,20 @@ namespace Calcpad.Core
                                 c.Expressions[0],
                                 Expression.Assign(a, b));
                         }
+                        if (a is MemberExpression ma)
+                        {
+                            a = ma.Expression;
+                            return Expression.Block(
+                                Expression.Call(a, AssignVariableMethod, b),
+                                ma);
+                        }
                         return Expression.Assign(a, b);
                     }
-                    if (_parser._settings.IsComplex)
-                        return Expression.Call(
-                            EvaluateOperatorMethod,
-                            Expression.Constant(_matrixCalc),
-                            Expression.Constant(t.Index), a, b);
+                    //if (_parser._settings.IsComplex)
+                    //    return Expression.Call(
+                    //        EvaluateOperatorMethod,
+                    //        Expression.Constant(_matrixCalc),
+                    //        Expression.Constant(t.Index), a, b);
 
                     return t.Content[0] switch
                     {
@@ -344,7 +351,6 @@ namespace Calcpad.Core
                     Expression.Constant(t.Index), a, b);
             }
 
-
             private Expression ParseVariableToken(VariableToken t)
             {
                 var v = t.Variable;
@@ -378,12 +384,7 @@ namespace Calcpad.Core
                 IValue vb;
                 if (t.Content == NegateString)
                 {
-                    vb = EvaluateConstantExpression(a);
-                    if (_parser._settings.IsComplex && vb is Value v)
-                        vb = ComplexCalculator.Negate(v);
-                    else
-                        vb = -vb;
-
+                    vb = -EvaluateConstantExpression(a);
                     return Expression.Constant(vb, typeof(IValue));
                 }
                 if (t.Type == TokenTypes.Function)
@@ -449,7 +450,7 @@ namespace Calcpad.Core
             private Expression ParseFunction(CustomFunction cf, Expression[] arguments)
             {
                 if (cf.IsRecursion)
-                    return Expression.Constant(Value.NaN, typeof(IValue));
+                    return Expression.Constant(RealValue.NaN, typeof(IValue));
 
                 if (AreConstantParameters(arguments))
                 {
@@ -595,7 +596,7 @@ namespace Calcpad.Core
             private static NewExpression ParseVectorToken(Expression[] values)
             {
                 var args = Expression.NewArrayInit(typeof(IValue), values);
-                return Expression.New(VectorConstructor, Expression.Call(ExpandValuesMethod, args));
+                return Expression.New(VectorConstructor, Expression.Call(ExpandRealValuesMethod, args));
             }
 
             private static MethodCallExpression ParseMatrixToken(Expression[] values)
@@ -608,13 +609,15 @@ namespace Calcpad.Core
                 Expression.Constant(Throw.Items.IndexTarget);
             private static readonly ConstantExpression IndexItem =
                 Expression.Constant(Throw.Items.Index);
+            private static readonly ConstantExpression ValueItem =
+                Expression.Constant(Throw.Items.Value);
 
             private static BlockExpression ParseVectorIndexToken(Expression vector, Expression value)
             {
                 var i = Expression.Convert(
                     Expression.Field(
-                        Expression.Call(AsValueMethod, value, IndexItem),
-                        "Re"),
+                        Expression.Call(AsRealMethod, value, IndexItem),
+                        "D"),
                     typeof(int));
 
                 var vec = Expression.Call(AsVectorMethod, vector, IndexTargetItem);
@@ -635,13 +638,13 @@ namespace Calcpad.Core
             {
                 var i = Expression.Convert(
                     Expression.Field(
-                        Expression.Call(AsValueMethod, ivalue, IndexItem),
-                        "Re"),
+                        Expression.Call(AsRealMethod, ivalue, IndexItem),
+                        "D"),
                     typeof(int));
                 var j = Expression.Convert(
                     Expression.Field(
-                        Expression.Call(AsValueMethod, jvalue, IndexItem),
-                        "Re"),
+                        Expression.Call(AsRealMethod, jvalue, IndexItem),
+                        "D"),
                     typeof(int));
                 var m = Expression.Call(AsMatrixMethod, matrix, IndexTargetItem);
                 var checkRowBounds = Expression.OrElse(

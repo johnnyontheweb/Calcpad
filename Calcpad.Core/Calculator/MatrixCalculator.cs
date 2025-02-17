@@ -21,8 +21,8 @@ namespace Calcpad.Core
         private readonly MatrixFunction4[] MatrixFunctions4;
         private readonly MatrixFunction5[] MatrixFunctions5;
         private readonly Func<IValue[], Matrix>[] MatrixMultiFunctions;
-        private readonly Func<Matrix, Value>[] MultiFunctions;
-        private readonly Func<Value, Value, Matrix, Value>[] Interpolations;
+        private readonly Func<Matrix, RealValue>[] MultiFunctions;
+        private readonly Func<RealValue, RealValue, Matrix, RealValue>[] Interpolations;
         private Vector _indexes;
 
         internal static readonly FrozenDictionary<string, int> FunctionIndex =
@@ -34,33 +34,34 @@ namespace Calcpad.Core
             { "symmetric", 3 },
             { "vec2diag", 4 },
             { "diag2vec", 5 },
-            { "vec2col", 6 },
-            { "n_rows", 7 },
-            { "n_cols", 8 },
-            { "mnorm_1", 9 },
-            { "mnorm_2", 10 },
-            { "mnorm", 10 },
-            { "mnorm_e", 11 },
-            { "mnorm_i", 12 },
-            { "cond_1", 13 },
-            { "cond_2", 14 },
-            { "cond", 14 },
-            { "cond_e", 15 },
-            { "cond_i", 16 },
-            { "det", 17 },
-            { "rank", 18 },
-            { "transp", 19 },
-            { "trace", 20 },
-            { "inverse", 21 },
-            { "adj", 22 },
-            { "cofactor", 23 },
-            { "eigenvals", 24 },
-            { "eigenvecs", 25 },
-            { "eigen", 26 },
-            { "lu", 27 },
-            { "qr", 28 },
-            { "svd", 29 },
-            { "cholesky", 30 },
+            { "vec2row", 6 },
+            { "vec2col", 7 },
+            { "n_rows", 8 },
+            { "n_cols", 9 },
+            { "mnorm_1", 10 },
+            { "mnorm_2", 11 },
+            { "mnorm", 11 },
+            { "mnorm_e", 12 },
+            { "mnorm_i", 13 },
+            { "cond_1", 14 },
+            { "cond_2", 15 },
+            { "cond", 15 },	
+            { "cond_e", 16 },
+            { "cond_i", 17 },
+            { "det", 18 },
+            { "rank", 19 },
+            { "transp", 20 },
+            { "trace", 21 },
+            { "inverse", 22 },
+            { "adj", 23 },
+            { "cofactor", 24 },
+            { "eigenvals", 25 },
+            { "eigenvecs", 26 },
+            { "eigen", 27 },
+            { "lu", 28 },
+            { "qr", 29 },
+            { "svd", 30 },
+            { "cholesky", 31 },
 
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -157,31 +158,32 @@ namespace Calcpad.Core
                 Symmetric,              //3
                 Vec2Diag,               //4
                 Diag2Vec,               //5
-                Vec2Col,                //6
-                NRows,                  //7
-                NCols,                  //8
-                L1Norm,                 //9
-                L2Norm,                 //10
-                FrobNorm,               //11
-                InfNorm,                //12
-                Cond1,                  //13
-                Cond2,                  //14
-                CondFrob,               //15
-                CondInf,                //16
-                Det,                    //17
-                Rank,                   //18
-                Transpose,              //19
-                Trace,                  //20
-                Invert,                 //21
-                Adjoint,                //22
-                Cofactor,               //23
-                EigenValues,            //24
-                EigenVectors,           //25
-                Eigen,                  //26
-                LUDecomposition,        //27
-                QRDecomposition,        //28
-                SVDDecomposition,       //29
-                CholeskyDecomposition,  //30
+                Vec2Row,                //6
+                Vec2Col,                //7
+                NRows,                  //8
+                NCols,                  //9
+                L1Norm,                 //10
+                L2Norm,                 //11
+                FrobNorm,               //12
+                InfNorm,                //13
+                Cond1,                  //14
+                Cond2,                  //15
+                CondFrob,               //16
+                CondInf,                //17
+                Det,                    //18
+                Rank,                   //19
+                Transpose,              //20
+                Trace,                  //21
+                Invert,                 //22
+                Adjoint,                //23
+                Cofactor,               //24
+                EigenValues,            //25
+                EigenVectors,           //26
+                Eigen,                  //27
+                LUDecomposition,        //28
+                QRDecomposition,        //29
+                SVDDecomposition,       //30
+                CholeskyDecomposition,  //31
             ];
             MatrixFunctions2 = [
                 Create,
@@ -320,11 +322,11 @@ namespace Calcpad.Core
         internal Func<Vector[], Matrix> GetMultiFunction(long index) =>
             MatrixMultiFunctions[index];
 
-        internal Matrix EvaluateOperator(long index, Matrix a, in Value b) =>
+        internal Matrix EvaluateOperator(long index, Matrix a, in RealValue b) =>
             Matrix.EvaluateOperator(_calc.GetOperator(index), a, b,
                 Calculator.IsZeroPreservingOperator[index], Calculator.OperatorRequireConsistentUnits(index));
 
-        internal Matrix EvaluateOperator(long index, in Value a, Matrix b) =>
+        internal Matrix EvaluateOperator(long index, in RealValue a, Matrix b) =>
             Matrix.EvaluateOperator(_calc.GetOperator(index), a, b,
                 Calculator.IsZeroPreservingOperator[index], Calculator.OperatorRequireConsistentUnits(index));
 
@@ -343,27 +345,28 @@ namespace Calcpad.Core
         internal Matrix EvaluateFunction2(long index, Matrix a, Matrix b) =>
             Matrix.EvaluateOperator(_calc.GetFunction2(index), a, b, index == 0, false);
 
-        internal Matrix EvaluateFunction2(long index, Matrix a, in Value b) =>
+        internal Matrix EvaluateFunction2(long index, Matrix a, in RealValue b) =>
             Matrix.EvaluateOperator(_calc.GetFunction2(index), a, b, index == 0, false);
 
-        internal Matrix EvaluateFunction2(long index, in Value a, Matrix b) =>
+        internal Matrix EvaluateFunction2(long index, in RealValue a, Matrix b) =>
             Matrix.EvaluateOperator(_calc.GetFunction2(index), a, b, index == 0, false);
 
         internal IValue EvaluateMultiFunction(long index, Matrix a) =>
             MultiFunctions[index](a);
 
-        internal IValue EvaluateInterpolation(long index, Value a, Value b, Matrix c) =>
+        internal IValue EvaluateInterpolation(long index, RealValue a, RealValue b, Matrix c) =>
             Interpolations[index](a, b, c);
 
-        private static DiagonalMatrix Identity(in IValue n) => new(IValue.AsInt(n), Value.One);
+        private static DiagonalMatrix Identity(in IValue n) => new(IValue.AsInt(n), RealValue.One);
         private static UpperTriangularMatrix UpperTriangular(in IValue n) => new(IValue.AsInt(n));
         private static LowerTriangularMatrix LowerTriangular(in IValue n) => new(IValue.AsInt(n));
         private static SymmetricMatrix Symmetric(in IValue n) => new(IValue.AsInt(n));
         private static DiagonalMatrix Vec2Diag(in IValue v) => new(IValue.AsVector(v));
         private static Vector Diag2Vec(in IValue M) => IValue.AsMatrix(M).Diagonal();
+        private static Matrix Vec2Row(in IValue v) => new(IValue.AsVector(v));
         private static ColumnMatrix Vec2Col(in IValue v) => new(IValue.AsVector(v));
-        private static IValue NRows(in IValue M) => new Value(IValue.AsMatrix(M).RowCount);
-        private static IValue NCols(in IValue M) => new Value(IValue.AsMatrix(M).ColCount);
+        private static IValue NRows(in IValue M) => new RealValue(IValue.AsMatrix(M).RowCount);
+        private static IValue NCols(in IValue M) => new RealValue(IValue.AsMatrix(M).ColCount);
         private static IValue FrobNorm(in IValue M) => IValue.AsMatrix(M).FrobNorm();
         private static IValue L2Norm(in IValue M) => IValue.AsMatrix(M).L2Norm();
         private static IValue L1Norm(in IValue M) => IValue.AsMatrix(M).L1Norm();
@@ -436,13 +439,13 @@ namespace Calcpad.Core
             return null;
         }
         private static Matrix Create(in IValue m, in IValue n) => new(IValue.AsInt(m), IValue.AsInt(n));
-        private static DiagonalMatrix Diagonal(in IValue n, in IValue value) => new(IValue.AsInt(n), IValue.AsValue(value));
-        private static ColumnMatrix Column(in IValue n, in IValue value) => new(IValue.AsInt(n), IValue.AsValue(value));
+        private static DiagonalMatrix Diagonal(in IValue n, in IValue value) => new(IValue.AsInt(n), IValue.AsReal(value));
+        private static ColumnMatrix Column(in IValue n, in IValue value) => new(IValue.AsInt(n), IValue.AsReal(value));
         private static Vector Row(in IValue M, in IValue row) => IValue.AsMatrix(M).Row(IValue.AsInt(row));
         private static Vector Col(in IValue M, in IValue col) => IValue.AsMatrix(M).Col(IValue.AsInt(col));
         private static Matrix ExtractRows(in IValue M, in IValue rows) => IValue.AsMatrix(M).ExtractRows(IValue.AsVector(rows));
         private static Matrix ExtractCols(in IValue M, in IValue cols) => IValue.AsMatrix(M).ExtractCols(IValue.AsVector(cols));
-        private static Matrix Fill(in IValue M, in IValue value) => IValue.AsMatrix(M).Fill(IValue.AsValue(value));
+        private static Matrix Fill(in IValue M, in IValue value) => IValue.AsMatrix(M).Fill(IValue.AsReal(value));
         private static Matrix SortCols(in IValue M, in IValue row) => IValue.AsMatrix(M).SortCols(IValue.AsInt(row));
         private static Matrix RsortCols(in IValue M, in IValue row) => IValue.AsMatrix(M).SortCols(IValue.AsInt(row), true);
         private static Matrix SortRows(in IValue M, in IValue col) => IValue.AsMatrix(M).SortRows(IValue.AsInt(col));
@@ -451,13 +454,13 @@ namespace Calcpad.Core
         private static Vector RevOrderCols(in IValue M, in IValue row) => IValue.AsMatrix(M).OrderCols(IValue.AsInt(row), true);
         private static Vector OrderRows(in IValue M, in IValue col) => IValue.AsMatrix(M).OrderRows(IValue.AsInt(col));
         private static Vector RevOrderRows(in IValue M, in IValue col) => IValue.AsMatrix(M).OrderRows(IValue.AsInt(col), true);
-        private static IValue Count(in IValue M, in IValue value) => IValue.AsMatrix(M).Count(IValue.AsValue(value));
-        private static Matrix FindEq(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.Equal);
-        private static Matrix FindNe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.NotEqual);
-        private static Matrix FindLt(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.LessThan);
-        private static Matrix FindLe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.LessOrEqual);
-        private static Matrix FindGt(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.GreaterThan);
-        private static Matrix FindGe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsValue(value), Vector.Relation.GreaterOrEqual);
+        private static IValue Count(in IValue M, in IValue value) => IValue.AsMatrix(M).Count(IValue.AsReal(value));
+        private static Matrix FindEq(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.Equal);
+        private static Matrix FindNe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.NotEqual);
+        private static Matrix FindLt(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.LessThan);
+        private static Matrix FindLe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.LessOrEqual);
+        private static Matrix FindGt(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.GreaterThan);
+        private static Matrix FindGe(in IValue M, in IValue value) => IValue.AsMatrix(M).FindAll(IValue.AsReal(value), Vector.Relation.GreaterOrEqual);
         private static Vector LSolve(in IValue A, in IValue B)
         {
             var a = IValue.AsMatrix(A);
@@ -512,22 +515,22 @@ namespace Calcpad.Core
         private static IValue Frobenius(in IValue A, in IValue B) => Matrix.Frobenius(IValue.AsMatrix(A), IValue.AsMatrix(B));
 
         private static Matrix Kronecker(in IValue A, in IValue B) => Matrix.Kronecker(IValue.AsMatrix(A), IValue.AsMatrix(B));
-        private static Matrix FillRow(Matrix M, in IValue row, in IValue value) => M.FillRow(IValue.AsInt(row), IValue.AsValue(value));
-        private static Matrix FillCol(Matrix M, in IValue col, in IValue value) => M.FillCol(IValue.AsInt(col), IValue.AsValue(value));
+        private static Matrix FillRow(Matrix M, in IValue row, in IValue value) => M.FillRow(IValue.AsInt(row), IValue.AsReal(value));
+        private static Matrix FillCol(Matrix M, in IValue col, in IValue value) => M.FillCol(IValue.AsInt(col), IValue.AsReal(value));
         private static Matrix Resize(Matrix M, in IValue m, in IValue n) => M.Resize(IValue.AsInt(m), IValue.AsInt(n));
-        private static Vector Search(Matrix M, in IValue value, in IValue i, in IValue j) => M.Search(IValue.AsValue(value), IValue.AsInt(i), IValue.AsInt(j));
-        private static Vector HLookupEq(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.Equal);
-        private static Vector HLookupNe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.NotEqual);
-        private static Vector HLookupLt(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.LessThan);
-        private static Vector HLookupLe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.LessOrEqual);
-        private static Vector HLookupGt(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.GreaterThan);
-        private static Vector HLookupGe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsValue(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.GreaterOrEqual);
-        private static Vector VLookupEq(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.Equal);
-        private static Vector VLookupNe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.NotEqual);
-        private static Vector VLookupLt(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.LessThan);
-        private static Vector VLookupLe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.LessOrEqual);
-        private static Vector VLookupGt(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.GreaterThan);
-        private static Vector VLookupGe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsValue(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.GreaterOrEqual);
+        private static Vector Search(Matrix M, in IValue value, in IValue i, in IValue j) => M.Search(IValue.AsReal(value), IValue.AsInt(i), IValue.AsInt(j));
+        private static Vector HLookupEq(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.Equal);
+        private static Vector HLookupNe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.NotEqual);
+        private static Vector HLookupLt(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.LessThan);
+        private static Vector HLookupLe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.LessOrEqual);
+        private static Vector HLookupGt(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.GreaterThan);
+        private static Vector HLookupGe(Matrix M, in IValue value, in IValue searchRow, in IValue returnRow) => M.HLookup(IValue.AsReal(value), IValue.AsInt(searchRow), IValue.AsInt(returnRow), Vector.Relation.GreaterOrEqual);
+        private static Vector VLookupEq(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.Equal);
+        private static Vector VLookupNe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.NotEqual);
+        private static Vector VLookupLt(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.LessThan);
+        private static Vector VLookupLe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.LessOrEqual);
+        private static Vector VLookupGt(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.GreaterThan);
+        private static Vector VLookupGe(Matrix M, in IValue value, in IValue searchCol, in IValue returnCol) => M.VLookup(IValue.AsReal(value), IValue.AsInt(searchCol), IValue.AsInt(returnCol), Vector.Relation.GreaterOrEqual);
         private static Matrix Copy(Matrix A, in IValue B, in IValue i, in IValue j) => A.CopyTo(IValue.AsMatrix(B), IValue.AsInt(i), IValue.AsInt(j));
         private static Matrix Add(Matrix A, in IValue B, in IValue i, in IValue j) => A.AddTo(IValue.AsMatrix(B), IValue.AsInt(i), IValue.AsInt(j));
         private static Matrix Submatrix(Matrix M, in IValue i1, in IValue j1, in IValue i2, in IValue j2) => M.Submatrix(IValue.AsInt(i1), IValue.AsInt(j1), IValue.AsInt(i2), IValue.AsInt(j2));
@@ -578,22 +581,22 @@ namespace Calcpad.Core
             Matrix.Augment(CastValues(values));
         private static Matrix Stack(IValue[] values) =>
             Matrix.Stack(CastValues(values));
-        private static Value Min(Matrix M) => M.Min();
-        private static Value Max(Matrix M) => M.Max();
-        private static Value Sum(Matrix M) => M.Sum();
-        private static Value SumSq(Matrix M) => M.SumSq();
-        private static Value Srss(Matrix M) => M.Srss();
-        private static Value Average(Matrix M) => M.Average();
-        private static Value Product(Matrix M) => M.Product();
-        private static Value Mean(Matrix M) => M.Mean();
-        private static Value Switch(Matrix M) => M[0, 0];
-        private static Value And(Matrix M) => M.And();
-        private static Value Or(Matrix M) => M.Or();
-        private static Value Xor(Matrix M) => M.Xor();
-        private static Value Gcd(Matrix M) => M.Gcd();
-        private static Value Lcm(Matrix M) => M.Lcm();
-        private static Value Take(Value x, Value y, Matrix m) => m.Take(x, y);
-        private static Value Line(Value x, Value y, Matrix m) => m.Line(x, y);
-        private static Value Spline(Value x, Value y, Matrix m) => m.Spline(x, y);
+        private static RealValue Min(Matrix M) => M.Min();
+        private static RealValue Max(Matrix M) => M.Max();
+        private static RealValue Sum(Matrix M) => M.Sum();
+        private static RealValue SumSq(Matrix M) => M.SumSq();
+        private static RealValue Srss(Matrix M) => M.Srss();
+        private static RealValue Average(Matrix M) => M.Average();
+        private static RealValue Product(Matrix M) => M.Product();
+        private static RealValue Mean(Matrix M) => M.Mean();
+        private static RealValue Switch(Matrix M) => M[0, 0];
+        private static RealValue And(Matrix M) => M.And();
+        private static RealValue Or(Matrix M) => M.Or();
+        private static RealValue Xor(Matrix M) => M.Xor();
+        private static RealValue Gcd(Matrix M) => M.Gcd();
+        private static RealValue Lcm(Matrix M) => M.Lcm();
+        private static RealValue Take(RealValue x, RealValue y, Matrix m) => m.Take(x, y);
+        private static RealValue Line(RealValue x, RealValue y, Matrix m) => m.Line(x, y);
+        private static RealValue Spline(RealValue x, RealValue y, Matrix m) => m.Spline(x, y);
     }
 }

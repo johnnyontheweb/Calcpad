@@ -1,5 +1,51 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
   </resheader>
@@ -70,7 +116,7 @@
         <value>Коренният показател трябва да е цяло число &gt; 1.</value>
     </data>
   <data name="Argument_out_of_range_for_n_factorial" xml:space="preserve">
-        <value>Аргументът e извън допустимите стойности n!.</value>
+        <value>Аргументът e извън допустимите стойности n! .</value>
     </data>
   <data name="The_argument_of_n_factorial_must_be_unitless" xml:space="preserve">
         <value>Аргументът на n! трябва да е бездименсионен.</value>
@@ -274,7 +320,7 @@
         <value>&lt;p&gt;&lt;span class="err"&gt;Пауза!&lt;/span&gt; натиснете &lt;b&gt;F5&lt;/b&gt; за да &lt;a href="#0" data-text="continue"&gt;продължите&lt;/a&gt; или &lt;b&gt;Esc&lt;/b&gt; за да &lt;a href="#0" data-text="cancel"&gt;прекъснете&lt;/a&gt;.&lt;/p&gt;</value>
     </data>
   <data name="Error_found_on_line" xml:space="preserve">
-        <value>&lt;div class=\"errorHeader\"&gt;Общо &lt;b&gt;1&lt;/b&gt; грешка на ред:</value>
+        <value>&lt;div class="errorHeader"&gt;Общо &lt;b&gt;1&lt;/b&gt; грешка на ред:</value>
     </data>
   <data name="Errors_found_on_lines" xml:space="preserve">
         <value>&lt;div class="errorHeader"&gt;Общо &lt;b&gt;{0}&lt;/b&gt; грешки на редове:</value>
@@ -461,5 +507,14 @@
   </data>
   <data name="BracketsNotClosed" xml:space="preserve">
     <value>Незатворени скоби.</value>
+  </data>
+  <data name="_must_be_real" xml:space="preserve">
+    <value> трябва да е реално число.</value>
+  </data>
+  <data name="Limit" xml:space="preserve">
+    <value>Границата</value>
+  </data>
+  <data name="Value" xml:space="preserve">
+    <value>Стойността</value>
   </data>
 </root>
