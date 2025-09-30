@@ -116,8 +116,16 @@ namespace Calcpad.Core
         {
             get
             {
-                _text ??= GetText(OutputWriter.OutputFormat.Text);
-                return _text;
+                int index = -1;
+                if (string.IsNullOrEmpty(_text))
+                    _text = GetText(OutputWriter.OutputFormat.Text);
+                else
+                    index = _text.IndexOf(':');
+
+                if (index < 0)
+                    return _text;
+
+                return _text[..index];
             }
             set => _text = value;
         }
@@ -129,7 +137,10 @@ namespace Calcpad.Core
                 if (_text is null)
                     return GetText(OutputWriter.OutputFormat.Html);
 
-                return new HtmlWriter().FormatUnitsText(_text);
+                if (Text == "°")
+                    return "°";
+
+                return new HtmlWriter(null, false).FormatUnitsText(Text);
             }
         }
 
@@ -140,7 +151,22 @@ namespace Calcpad.Core
                 if (_text is null)
                     return GetText(OutputWriter.OutputFormat.Xml);
 
-                return new XmlWriter().FormatUnitsText(_text);
+                return new XmlWriter(null, false).FormatUnitsText(Text);
+            }
+        }
+
+        internal string FormatString
+        {
+            get
+            {
+                if (_text is null)
+                    return null;
+
+                int index = _text.IndexOf(':');
+                if (index < 0)
+                    return null;
+
+                return _text[(index + 1)..];
             }
         }
 
@@ -151,6 +177,9 @@ namespace Calcpad.Core
                 var hash = new HashCode();
                 var n = Length;
                 hash.Add(n);
+                if (IsTemp && _text.StartsWith('Δ'))
+                    hash.Add('Δ');
+
                 for (int i = 0; i < n; ++i)
                 {
                     if (_powers[i] != 0f)
@@ -366,14 +395,14 @@ namespace Calcpad.Core
             Dictionary<string, Unit> units = new(StringComparer.Ordinal)
             {
                 {string.Empty, new(9)},
-                {"%",     new(0) {_text = "%" } },
-                {"‰",     new(0) {_text = "‰" } },
-                {"‱",    new(0) {_text = "‱" } },
-                {"pcm",   new(0) {_text = "pcm" } },
-                {"ppm",   new(0) {_text = "ppm" } },
-                {"ppb",   new(0) {_text = "ppb" } },
-                {"ppt",   new(0) {_text = "ppt" } },
-                {"ppq",   new(0) {_text = "ppq" } },
+                {"%",     new(0) {_text = "%"}},
+                {"‰",     new(0) {_text = "‰"}},
+                {"‱",    new(0) {_text = "‱"}},
+                {"pcm",   new(0) {_text = "pcm"}},
+                {"ppm",   new(0) {_text = "ppm"}},
+                {"ppb",   new(0) {_text = "ppb"}},
+                {"ppt",   new(0) {_text = "ppt"}},
+                {"ppq",   new(0) {_text = "ppq"}},
                 {"g",     g},
                 {"dag",   g.Shift(1)},
                 {"hg",    g.Shift(2)},
@@ -848,9 +877,9 @@ namespace Calcpad.Core
         {
             OutputWriter writer = format switch
             {
-                OutputWriter.OutputFormat.Html => new HtmlWriter(),
-                OutputWriter.OutputFormat.Xml => new XmlWriter(),
-                _ => new TextWriter()
+                OutputWriter.OutputFormat.Html => new HtmlWriter(null, false),
+                OutputWriter.OutputFormat.Xml => new XmlWriter(null, false),
+                _ => new TextWriter(null, false)
             };
             var stringBuilder = new StringBuilder(50);
             var isFirst = true;
@@ -996,6 +1025,9 @@ namespace Calcpad.Core
 
         internal Unit Pow(float x)
         {
+            if (x == 0)
+                return null;
+
             var n = Length;
             Unit unit = new(n)
             {
@@ -1083,7 +1115,7 @@ namespace Calcpad.Core
 
         internal static Unit GetElectricalUnit(Unit u)
         {
-            if ((!u._text?.StartsWith("VA") ?? true) && 
+            if ((!u._text?.StartsWith("VA") ?? true) &&
                 ElectricalUnits.TryGetValue(u, out var eu))
                 return eu;
 
@@ -1210,7 +1242,7 @@ namespace Calcpad.Core
                 _ => 0,
             };
 
-    internal double Normalize()
+        internal double Normalize()
         {
             var n = _factors.Length;
             if (n == 0 || _text is not null)
@@ -1532,7 +1564,7 @@ namespace Calcpad.Core
                 name = writer.FormatUnits(GetPrefix(n) + name);
                 factor /= GetScale(n);
                 if (Math.Abs(factor - 1) > 1e-12)
-                    name = writer.AddBrackets(writer.FormatReal(factor, 6) + '·' + name);
+                    name = writer.AddBrackets(writer.FormatReal(factor, null, false) + "\u200A·\u200A" + name);
             }
             else
                 name = writer.FormatUnits(name);
@@ -1540,7 +1572,7 @@ namespace Calcpad.Core
             if (power == 1f)
                 return name;
 
-            var sp = writer.FormatReal(power, 1);
+            var sp = writer.FormatReal(power, null, false);
             if (power < 0 && writer is TextWriter)
                 sp = writer.AddBrackets(sp);
 
@@ -1568,14 +1600,13 @@ namespace Calcpad.Core
             }
             else if (ub is null)
             {
-                if(ua.IsDimensionless)
-                    return 1d / ua. GetDimensionlessFactor();
+                if (ua.IsDimensionless)
+                    return 1d / ua.GetDimensionlessFactor();
             }
-            else if(ua.IsConsistent(ub))
+            else if (ua.IsConsistent(ub))
                 return ub.ConvertTo(ua);
 
-            Throw.InconsistentUnitsOperationException(GetText(ua), op, GetText(ub));
-            return double.NaN;
+            throw Exceptions.InconsistentUnitsOperation(GetText(ua), op, GetText(ub));
         }
 
         internal static Unit Multiply(Unit ua, Unit ub, out double d, bool updateText = false)
@@ -1609,7 +1640,7 @@ namespace Calcpad.Core
                     return null;
                 }
                 return ua;
-            }            
+            }
             if (ua.IsDimensionless)
             {
                 d = ua.GetDimensionlessFactor();
@@ -1624,7 +1655,7 @@ namespace Calcpad.Core
             {
                 uc.Scale(d);
                 d = 1d;
-                uc._text = ua.Text + '·' + ub.Text;
+                uc._text = ua.Text + "\u200A·\u200A" + ub.Text;
             }
             return uc;
         }
@@ -1686,24 +1717,27 @@ namespace Calcpad.Core
         internal static Unit Pow(Unit u, IScalarValue power, bool updateText = false)
         {
             if (power.Units is not null)
-                Throw.PowerNotUnitlessException();
+                throw Exceptions.PowerNotUnitless();
 
             if (u is null)
                 return null;
 
             if (!power.IsReal)
-                Throw.UnitsToComplexPowerException();
+                throw Exceptions.UnitsToComplexPower();
 
             var d = power.Re;
-            var result = u.Pow((float)d);
-            if (updateText)
+            var f = (float)d;
+            var result = u.Pow(f);
+            if (updateText && result is not null)
             {
                 ReadOnlySpan<char> s = u.Text;
                 if (!s.Contains('^'))
                 {
-                    var ps = d < 0 ?
-                        $"({OutputWriter.FormatNumberHelper(d, 2)})" :
-                        OutputWriter.FormatNumberHelper(d, 2);
+                    var writer = new TextWriter(null, false);
+                    var ps = GetFraction(f) ?? 
+                        (d < 0 ?
+                            $"({writer.FormatNumberHelper(d, null)})" :
+                            writer.FormatNumberHelper(d, null));
 
                     result._text =
                         s.IndexOfAny(CompositeUnitChars) >= 0.0 ?
@@ -1712,6 +1746,28 @@ namespace Calcpad.Core
                 }
             }
             return result;
+        }
+
+        private static string GetFraction(float f)
+        {
+            var uf = Math.Abs(f);
+            if (uf >= 1f) 
+                return null;
+
+            var s = f < 0 ? "-" : string.Empty;
+            return uf switch
+            {
+                1f / 2f => $"({s}1/2)",
+                1f / 3f => $"({s}1/3)",
+                2f / 3f => $"({s}2/3)",
+                1f / 4f => $"({s}1/4)",
+                3f / 4f => $"({s}3/4)",
+                1f / 5f => $"({s}1/5)",
+                2f / 5f => $"({s}2/5)",
+                3f / 5f => $"({s}3/5)",
+                4f / 5f => $"({s}4/5)",
+                _ => null
+            };
         }
 
         internal static Unit Root(Unit u, int n, bool updateText = false)
@@ -1723,13 +1779,13 @@ namespace Calcpad.Core
                 if (!s.Contains('^'))
                     result._text =
                         s.IndexOfAny(CompositeUnitChars) >= 0 ?
-                        $"({s})^1⁄{n}" :
-                        $"{s}^1⁄{n}";
+                        $"({s})^(1/{n})" :
+                        $"{s}^(1/{n})";
             }
             return result;
         }
 
-        internal double GetDimensionlessFactor() => 
+        internal double GetDimensionlessFactor() =>
             Text switch
             {
                 "%" => 1e-2,
@@ -1740,7 +1796,9 @@ namespace Calcpad.Core
                 "ppb" => 1e-9,
                 "ppt" => 1e-12,
                 "ppq" => 1e-15,
-                _ => 1
+                _ => 1d
             };
+
+        internal static Unit GetFormattingUnit(string s) => new(0) { _text = s };
     }
 }

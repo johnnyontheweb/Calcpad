@@ -1,7 +1,9 @@
 ﻿using SkiaSharp;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Calcpad.Core
 {
@@ -73,13 +75,20 @@ namespace Calcpad.Core
                 ys = (Height - 2 * Margin) / limits.Height;
                 y0 = Height - Margin + (int)(limits.Bottom * ys);
             }
-            if (Settings.VectorGraphics || Parser.PlotSVG)
+            var isVector = Settings.VectorGraphics || Parser.PlotSVG;
+            var isFIle = !string.IsNullOrEmpty(Settings.ImagePath);
+            var ext = isVector ? "svg" : "png";
+            var fileName = isFIle ?
+                Path.ChangeExtension(Path.GetRandomFileName(), ext) :
+                null;
+
+            if (isVector)
             {
                 GetSvgPoints(charts, x0, y0, xs, ys);
-                return DrawSvg(charts, x0, y0, xs, ys, limits);
+                return DrawSvg(charts, x0, y0, xs, ys, limits, fileName);
             }
             GetPngPoints(charts, x0, y0, xs, ys);
-            return DrawPng(charts, x0, y0, xs, ys, limits);
+            return DrawPng(charts, x0, y0, xs, ys, limits, fileName);
         }
 
         private static Box FixLimits(Box limits)
@@ -195,7 +204,7 @@ namespace Calcpad.Core
                 if (!ReferenceEquals(u, v.Units))
                 {
                     if (!Unit.IsConsistent(u, v.Units))
-                        Throw.InconsistentUnitsException(Unit.GetText(u), Unit.GetText(v.Units));
+                        throw Exceptions.InconsistentUnits(Unit.GetText(u), Unit.GetText(v.Units));
 
                     return v.D * v.Units.ConvertTo(u);
                 }
@@ -215,31 +224,31 @@ namespace Calcpad.Core
                 charts[i].GetChartSvgPoints(x0, y0, xs, ys);
         }
 
-        private string DrawPng(Chart[] charts, double x0, double y0, double xs, double ys, Box bounds)
+        private string DrawPng(Chart[] charts, double x0, double y0, double xs, double ys, Box bounds, string fileName = null)
         {
             using var bitmap = new SKBitmap(Width, Height);
             using var canvas = new SKCanvas(bitmap);
-            var penWidth = 1.5f * ScreenScaleFactor;
-            var dotRadius = 2f * ScreenScaleFactor;
+            var penWidth = 1.7f * ScreenScaleFactor;
+            var dotRadius = 2.3f * ScreenScaleFactor;
             SKPaint[] chartPens =
             [
-                new() { Color = SKColors.Red, StrokeWidth = penWidth },
-                new() { Color = SKColors.Green, StrokeWidth = penWidth },
-                new() { Color = SKColors.Blue, StrokeWidth = penWidth },
-                new() { Color = SKColors.Goldenrod, StrokeWidth = penWidth },
-                new() { Color = SKColors.Magenta, StrokeWidth = penWidth },
-                new() { Color = SKColors.DarkCyan, StrokeWidth = penWidth },
-                new() { Color = SKColors.Purple, StrokeWidth = penWidth },
-                new() { Color = SKColors.DarkOrange, StrokeWidth = penWidth },
-                new() { Color = SKColors.Maroon, StrokeWidth = penWidth },
+                new() { Color = SKColors.Tomato, StrokeWidth = penWidth },
                 new() { Color = SKColors.YellowGreen, StrokeWidth = penWidth },
+                new() { Color = SKColors.CornflowerBlue, StrokeWidth = penWidth },
+                new() { Color = new SKColor(240, 208, 0), StrokeWidth = penWidth },
+                new() { Color = SKColors.MediumVioletRed, StrokeWidth = penWidth },
+                new() { Color = SKColors.MediumSpringGreen, StrokeWidth = penWidth },
+                new() { Color = SKColors.BlueViolet, StrokeWidth = penWidth },
+                new() { Color = SKColors.LightSalmon, StrokeWidth = penWidth },
+                new() { Color = SKColors.DeepPink, StrokeWidth = penWidth },
+                new() { Color = SKColors.DarkTurquoise, StrokeWidth = penWidth },
             ];
             SKPaint[] chartBrushes =
             [
                 new() { Color = chartPens[0].Color.WithAlpha(12) },
-                new() { Color = chartPens[1].Color.WithAlpha(11) },
+                new() { Color = chartPens[1].Color.WithAlpha(14) },
                 new() { Color = chartPens[2].Color.WithAlpha(10) },
-                new() { Color = chartPens[3].Color.WithAlpha(9) },
+                new() { Color = chartPens[3].Color.WithAlpha(11) },
                 new() { Color = chartPens[4].Color.WithAlpha(8) },
                 new() { Color = chartPens[5].Color.WithAlpha(7) },
                 new() { Color = chartPens[6].Color.WithAlpha(6) },
@@ -264,7 +273,6 @@ namespace Calcpad.Core
                 ref var pen = ref chartPens[penNo];
                 if (c.Bounds.Width == 0 && c.Bounds.Height == 0)
                 {
-
                     pen.Style = SKPaintStyle.StrokeAndFill;
                     canvas.DrawCircle(c.PngPoints[0], dotRadius, pen);
                     pen.Style = SKPaintStyle.Stroke;
@@ -280,17 +288,18 @@ namespace Calcpad.Core
                         FillChart(canvas, chartBrushes[penNo], (float)yf, c.PngPoints);
                     }
                 }
-
                 penNo++;
                 if (penNo >= chartPens.Length)
                     penNo = 0;
             }
             string src;
-            if (string.IsNullOrEmpty(Settings.ImagePath))
+            if (string.IsNullOrEmpty(fileName))
                 src = ImageToBase64(bitmap);
             else
-                src = Settings.ImageUri + PngToFile(bitmap, Settings.ImagePath);
-
+            {
+                src = Settings.ImageUri + fileName;
+                PngToFile(bitmap, Settings.ImagePath, fileName);
+            }
             for (int j = 0, len = chartPens.Length; j < len; ++j)
             {
                 chartPens[j].Dispose();
@@ -313,39 +322,37 @@ namespace Calcpad.Core
             canvas.DrawPath(path, brush);
         }
 
-        private string DrawSvg(Chart[] charts, double x0, double y0, double xs, double ys, Box bounds)
+        private string DrawSvg(Chart[] charts, double x0, double y0, double xs, double ys, Box bounds, string fileName = null)
         {
-            var svgDrawing = new SvgDrawing(Width, Height, ScreenScaleFactor);
+            var svgDrawing = new SvgDrawing(Width, Height, ScreenScaleFactor, charts.Length);
             DrawGridSvg(svgDrawing, x0, y0, xs, ys, bounds);
             var penNo = 1;
-            var dotRadius = 2 * ScreenScaleFactor;
+            var dotRadius = 2.5 * ScreenScaleFactor;
             foreach (var c in charts)
             {
                 if (c.PointCount <= 0)
                     continue;
 
                 if (c.Bounds.Width == 0 && c.Bounds.Height == 0)
-                    svgDrawing.DrawCircle(c.SvgPoints[0].X, c.SvgPoints[0].Y, dotRadius, "PlotSeries" + penNo);
+                    svgDrawing.DrawCircle(c.SvgPoints[0].X, c.SvgPoints[0].Y, dotRadius, "Series" + penNo);
                 else
                 {
-                    svgDrawing.DrawPolyline(c.SvgPoints, "PlotSeries" + penNo);
+                    svgDrawing.DrawPolyline(c.SvgPoints, "Series" + penNo);
                     if (c.Fill)
                     {
                         var yf = y0 - Math.Clamp(0, bounds.Bottom * ys, bounds.Top * ys);
-                        FillChartSVG(svgDrawing, "PlotFill" + penNo, yf, c.SvgPoints);
+                        FillChartSVG(svgDrawing, "Fill" + penNo, yf, c.SvgPoints);
                     }
                 }
                 penNo++;
                 if (penNo > 10)
                     penNo = 1;
             }
-            if (!string.IsNullOrEmpty(Settings.ImagePath))
-                return HtmlImg(Settings.ImageUri + SvgToFile(svgDrawing, Settings.ImagePath));
+            if (string.IsNullOrEmpty(fileName))
+                return $"<svg class=\"plot\" {svgDrawing.ToString()[4..]}";
 
-            double d = 0.75 / ScreenScaleFactor;
-            double dw = Math.Round(d * Width);
-            double dh = Math.Round(d * Height);
-            return $"<div class=\"plot\" style=\"width:{dw}pt; height:{dh}pt;\">{svgDrawing}</div>";
+            SvgToFile(svgDrawing, Settings.ImagePath, fileName);
+            return HtmlImg(Settings.ImageUri + fileName);
         }
 
         private static void FillChartSVG(SvgDrawing svgDrawing, string svgClass, double y0, SvgPoint[] points)

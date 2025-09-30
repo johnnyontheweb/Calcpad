@@ -1,6 +1,8 @@
 ﻿using SkiaSharp;
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Calcpad.Core
 {
@@ -51,23 +53,26 @@ namespace Calcpad.Core
 
             private void GetShadows()
             {
-                double dMax = 0;
-                for (int i = 1; i < _nx; ++i)
-                    for (int j = 1; j < _ny; ++j)
-                    {
-                        var d = Math.Abs(Points[i, j].Z - Points[i - 1, j].Z);
-                        if (d > dMax)
-                            dMax = d;
-                        d = Math.Abs(Points[i, j].Z - Points[i, j - 1].Z);
-                        if (d > dMax)
-                            dMax = d;
-                    }
                 int nx = _nx - 1, ny = _ny - 1;
-                var dx = Math.Abs(Points[nx, 0].X - Points[0, 0].X) / nx;
-                var dy = Math.Abs(Points[0, ny].Y - Points[0, 0].Y) / ny;
-                double k = 1;
-                if (dMax > 0)
-                    k = Math.Sqrt(dx * dx + dy * dy) / (1.618 * dMax);
+                var dx = Math.Abs(Points[nx, 0].X - Points[0, 0].X);
+                var dy = Math.Abs(Points[0, ny].Y - Points[0, 0].Y);
+                var dz = 0d;
+                for (int i = 0; i < nx; ++i)
+                {
+                    var i1 = i == 0 ? 0 : i - 1;
+                    var i2 = i == nx ? i : i + 1;
+                    for (int j = 0; j < ny; ++j)
+                    {
+                        var j1 = j == 0 ? 0 : j - 1;
+                        var j2 = j == ny ? j : j + 1;
+
+                        dz += Math.Abs(Points[i1, j].Z - Points[i2, j].Z)
+                        + Math.Abs(Points[i, j1].Z - Points[i, j2].Z);
+                    }
+                }
+                var k = 1d;
+                if (dz  > 0)
+                    k = 0.5 * (_ny * dx  + _nx * dy) / dz;
 
                 for (int i = 0; i < _nx; ++i)
                 {
@@ -141,18 +146,20 @@ namespace Calcpad.Core
             var x0 = Left - (int)(startX * xs);
             var ys = (Height - 2 * Margin) / (endY - startY);
             var y0 = Height - Margin + (int)(startY * ys);
-
             var bounds = new Box(startX, startY, endX, endY);
-            if (Settings.VectorGraphics || Parser.PlotSVG)
+            var isVector = Settings.VectorGraphics || Parser.PlotSVG;
+            var isFIle = !string.IsNullOrEmpty(Settings.ImagePath);
+            var ext = isVector ? "svg" : "png";
+            var fileName = isFIle ?
+                Path.ChangeExtension(Path.GetRandomFileName(), ext) :
+                null;
+            if (isVector)
             {
                 m.GetSvgPoints(x0, y0, xs, ys);
-                return DrawSvg(m, x0, y0, xs, ys, bounds);
+                return DrawSvg(m, x0, y0, xs, ys, bounds, fileName);
             }
-            else
-            {
-                m.GetPngPoints(x0, y0, xs, ys);
-                return DrawPng(m, x0, y0, xs, ys, bounds);
-            }
+            m.GetPngPoints(x0, y0, xs, ys);
+            return DrawPng(m, x0, y0, xs, ys, bounds, fileName);
         }
 
         private Node[,] Calculate(Func<IValue> function, Variable varX, Variable varY, double startX, double endX, double startY, double endY, Unit xUnits, Unit yUnits)
@@ -228,6 +235,7 @@ namespace Calcpad.Core
             }
         }
 
+        private readonly double _k = Math.Sqrt(1.5);
         private void GetRgb(out double red, out double green, out double blue, double value)
         {
             const double d1 = 3d / 5d;
@@ -304,18 +312,37 @@ namespace Calcpad.Core
                     break;
                 case PlotSettings.ColorScales.GreenToYellow:
                     red = value;
-                    green = 0.4 + 0.6 * value;
-                    blue = 0.4 - 0.4 * value;
+                    green = 0.4 + 0.6 * f(value);
+                    blue = 0.4 - 0.2 * value * value;
                     break;
                 case PlotSettings.ColorScales.Blues:
-                    red = 0.2 + 0.2 * value;
-                    green = 0.2 + 0.8 * value;
+                    red = 0.1 + 0.6 * value;
+                    green = 0.2 + 0.75 * value;
                     blue = 0.8 + 0.2 * value;
+                    break;
+                case PlotSettings.ColorScales.BlueToYellow:
+                    var v2 = value * value;
+                    red = 0.15 + 0.85 * v2;
+                    green = 0.3 + 0.65 * f(value);
+                    blue = 0.15 + 0.65 * (1d - v2);
+                    break;
+                case PlotSettings.ColorScales.BlueToRed:
+                    red = 0.8 * f(value) + 0.2 * (1 - Math.Pow(value, 4) - Math.Pow(1d - value, 4));
+                    green = value - 0.45;
+                    green = 2d * (0.4 - green * green);
+                    blue = 1d - 0.8 * value * value;
+                    break;
+                case PlotSettings.ColorScales.PurpleToYellow:
+                    var v6 = Math.Pow(1 - value, 6);
+                    red = 0.4 + 0.6 * value - 0.4 * v6;
+                    green = 0.9 * value * value * value;
+                    blue = 1.2 * (1d - value) - 0.6 * v6;
                     break;
                 default:
                     red = green = blue = 1d;
                     break;
             }
+            double f(double x) => _k * x / Math.Sqrt(0.5 + x * x);
         }
 
         private void DrawColorScalePng(SKCanvas canvas, Map m)
@@ -343,10 +370,11 @@ namespace Calcpad.Core
             }
             using var axisPen = CreateAxisPen();
             using var textPen = CreateTextPen();
+            using var textFont = CreateTextFont();
             using var gridPen = CreateGridPen();
             canvas.DrawRect(x0, Margin, w, h, axisPen);
-            var sz = new SKRect();
-            textPen.MeasureText("0", ref sz);
+            textFont.MeasureText("0", out SKRect rect, textPen);
+            var sz = rect.Size;
             var th = sz.Height / 2f;
             var dy = (m.Max - m.Min) / NColors;
             dh = (float)h / NColors;
@@ -358,8 +386,8 @@ namespace Calcpad.Core
                 var d = m.Min + i * dy;
                 if (Math.Abs(d) < 1e-8 * dy)
                     d = 0d;
-                var s = OutputWriter.FormatNumberHelper(d, 2);
-                canvas.DrawText(s, x0 + w + a, y + th, textPen);
+                var s = Writer.FormatNumberHelper(d, null);
+                canvas.DrawText(s, x0 + w + a, y + th, textFont, textPen);
             }
         }
 
@@ -379,7 +407,7 @@ namespace Calcpad.Core
                 GetColor(out var red, out var green, out var blue, (i + 0.5) / n, 1.0);
                 g.FillRectangle(x0, y0 - i * dh - dh, w, dh, $"#{red:x2}{green:x2}{blue:x2}");
             }
-            g.DrawRectangle(x0, Margin, w, h, "PlotAxis");
+            g.DrawRectangle(x0, Margin, w, h, "Axis");
 
             var dy = (m.Max - m.Min) / NColors;
             dh = (double)h / NColors;
@@ -387,8 +415,8 @@ namespace Calcpad.Core
             for (int i = 0; i <= NColors; ++i)
             {
                 var y = y0 - i * dh;
-                g.DrawLine(x0, y, x0 + w, y, "PlotGrid");
-                var s = OutputWriter.FormatNumberHelper(m.Min + i * dy, 2);
+                g.DrawLine(x0, y, x0 + w, y, "Grid");
+                var s = Writer.FormatNumberHelper(m.Min + i * dy, null);
                 g.DrawText(s, x0 + w + a, y + th05);
             }
         }
@@ -400,6 +428,7 @@ namespace Calcpad.Core
                 delta = 1.0;
             else
                 delta = 1.0 / delta;
+
             var factor = 1.0 / _size;
             int nxs = _nx * _size, nys = _ny * _size;
             var d = new double[nxs + 1, nys + 1, 3];
@@ -423,11 +452,11 @@ namespace Calcpad.Core
                         }
                         if (Settings.Shadows)
                         {
-                            for (int p = 1; p <= 2; p++)
+                            for (int p = 1; p <= 2; ++p)
                             {
                                 d0 = d[i, j0, p];
                                 d1 = (d[i, j, p] - d0) * factor;
-                                for (int k = 1; k < _size; k++)
+                                for (int k = 1; k < _size; ++k)
                                 {
                                     d0 += d1;
                                     d[i, j0 + k, p] = d0;
@@ -436,7 +465,7 @@ namespace Calcpad.Core
                         }
                     }
                     j0 = j;
-                    j1++;
+                    ++j1;
                 }
                 if (i > 0 && _size > 1)
                 {
@@ -444,7 +473,7 @@ namespace Calcpad.Core
                     {
                         var d0 = d[i0, j, 0];
                         var d1 = (d0 - d[i, j, 0]) * factor;
-                        for (int k = 1; k < _size; k++)
+                        for (int k = 1; k < _size; ++k)
                         {
                             d0 -= d1;
                             d[i0 + k, j, 0] = d0;
@@ -452,11 +481,11 @@ namespace Calcpad.Core
 
                         if (Settings.Shadows)
                         {
-                            for (int p = 1; p <= 2; p++)
+                            for (int p = 1; p <= 2; ++p)
                             {
                                 d0 = d[i0, j, p];
                                 d1 = (d0 - d[i, j, p]) * factor;
-                                for (int k = 1; k < _size; k++)
+                                for (int k = 1; k < _size; ++k)
                                 {
                                     d0 -= d1;
                                     d[i0 + k, j, p] = d0;
@@ -466,7 +495,7 @@ namespace Calcpad.Core
                     }
                 }
                 i0 = i;
-                i1++;
+                ++i1;
             }
             return d;
         }
@@ -528,7 +557,10 @@ namespace Calcpad.Core
                                     s = Math.Pow(length, 200d) * ks;
                             }
                         }
-                        GetColor(out var red, out var green, out var blue, values[j, n1, 0], p);
+                        if (p < 0d)
+                            p = 0d;
+
+                        GetColor(out var red, out var green, out var blue, d, p);
                         var jStr = 4 * (iStr + j);
                         bytes[jStr + 3] = 255;
                         bytes[jStr + 2] = (byte)(red + (255 - red) * s);
@@ -543,7 +575,7 @@ namespace Calcpad.Core
             return pinnedArray;
         }
 
-        private string DrawPng(Map m, int x0, int y0, double xs, double ys, Box bounds)
+        private string DrawPng(Map m, int x0, int y0, double xs, double ys, Box bounds, string fileName = null)
         {
             var values = Interpolate(m);
             using var bitmap = new SKBitmap(Width, Height);
@@ -551,19 +583,21 @@ namespace Calcpad.Core
             using var canvas = new SKCanvas(bitmap);
             DrawGridPng(canvas, x0, y0, xs, ys, bounds);
             DrawColorScalePng(canvas, m);
-            string src;
-            if (string.IsNullOrEmpty(Settings.ImagePath))
+            string src = null;
+            if (string.IsNullOrEmpty(fileName))
                 src = ImageToBase64(bitmap);
             else
-                src = Settings.ImageUri + PngToFile(bitmap, Settings.ImagePath);
-
+            {
+                src = Settings.ImageUri + fileName;
+                PngToFile(bitmap, Settings.ImagePath, fileName);
+            }
             gcHandle.Free();
             return HtmlImg(src);
         }
 
-        private string DrawSvg(Map m, double x0, double y0, double xs, double ys, Box bounds)
+        private string DrawSvg(Map m, double x0, double y0, double xs, double ys, Box bounds, string fileName = null)
         {
-            var g = new SvgDrawing(Width, Height, ScreenScaleFactor);
+            var g = new SvgDrawing(Width, Height, ScreenScaleFactor, 0);
             var values = Interpolate(m);
             var w = values.GetLength(0) - 1;
             var h = values.GetLength(1) - 1;
@@ -577,15 +611,15 @@ namespace Calcpad.Core
             g.DrawImage(Left, Margin, w, h, src);
             DrawGridSvg(g, x0, y0, xs, ys, bounds);
             DrawColorScaleSvg(g, m);
-            if (string.IsNullOrEmpty(Settings.ImagePath))
+            if (string.IsNullOrEmpty(fileName))
             {
                 double d = 0.75 / ScreenScaleFactor;
                 double dw = Math.Round(d * Width);
                 double dh = Math.Round(d * Height);
                 return $"<div class=\"plot\" style=\"width:{dw}pt; height:{dh}pt;\">{g}</div>";
             }
-            src = Settings.ImageUri + SvgToFile(g, Settings.ImagePath);
-            return HtmlImg(src);
+            SvgToFile(g, Settings.ImagePath, fileName);
+            return HtmlImg(Settings.ImageUri + fileName);
         }
     }
 }

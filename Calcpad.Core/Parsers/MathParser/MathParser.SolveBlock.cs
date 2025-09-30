@@ -2,7 +2,6 @@
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Text;
-using static Calcpad.Core.Throw;
 
 namespace Calcpad.Core
 {
@@ -49,7 +48,7 @@ namespace Calcpad.Core
                 "$Inf",
                 "∫",
                 "∫",
-                "$Slope",
+                "d/dt",
                 "$Repeat",
                 "∑",
                 "∏",
@@ -65,7 +64,6 @@ namespace Calcpad.Core
             internal event Action OnChange;
             internal IValue Result { get; private set; }
             internal bool IsFigure { get; private set; }
-
             internal SolveBlock(string script, SolverTypes type, MathParser parser)
             {
                 Script = script;
@@ -124,43 +122,57 @@ namespace Calcpad.Core
                 var targetUnits = _parser._targetUnits;
                 var allowAssignment = _type == SolverTypes.Repeat || _type == SolverTypes.Root;
                 for (int i = 0; i <= n; ++i)
-                {
                     if (string.IsNullOrWhiteSpace(_items[i].Input))
-                        Throw.MissingDelimiterException(delimiters[i], Script);
+                    {
+                        var j = i == 0 ? 0 : i - 1;
+                        throw Exceptions.MissingDelimiter(delimiters[j], $"{TypeName(_type)}{{{Script}}}" );
+                    }
 
-                    _items[i].Input = _items[i].Input.Trim();
+                for (int i = 0; i <= n; ++i)
+                {
+                    ref var item = ref _items[i];
+                    item.Input = item.Input.Trim();
                     if (i == 0 && _type == SolverTypes.Root)
                     {
-                        var s = _items[0].Input.Split('=');
-                        _items[0].Input = s[0];
+                        var s = item.Input.Split('=');
+                        item.Input = s[0];
                         if (s.Length == 2)
                         {
                             _items[4].Input = s[1];
                             n = 4;
                         }
                         else if (s.Length > 2)
-                            Throw.MultipleAssignmentsException(string.Join('=', s));
+                            throw Exceptions.MultipleAssignments(string.Join('=', s));
                     }
-                    _parser.Parse(_items[i].Input, i == 0 && allowAssignment);
-                    _items[i].Rpn = _parser._rpn;
+                    _parser.Parse(item.Input, i == 0 && allowAssignment);
+                    item.Rpn = _parser._rpn;
                 }
                 if (_type == SolverTypes.Inf || _type == SolverTypes.Sup)
                 {
                     var s = _items[1].Input + (_type == SolverTypes.Sup ? "_sup" : "_inf");
                     _parser.SetVariable(s, RealValue.NaN);
                 }
-                var vt = (VariableToken)_items[1].Rpn[0];
-                Parameter[] parameters = [new(vt.Content)];
-                vt.Variable = parameters[0].Variable;
-                _var = vt.Variable;
+                var rpn = _items[1].Rpn;
+                Parameter[] parameters;
+                if (rpn.Length == 1 && rpn[0] is VariableToken vt)
+                {
+                    parameters = [new(vt.Content)];
+                    vt.Variable = parameters[0].Variable;
+                    _var = vt.Variable;
+                }
+                else
+                    throw Exceptions.CounterMustBeASingleVariableName();
+
                 if (_parser.IsEnabled)
                 {
-                    _parser.BindParameters(parameters, _items[0].Rpn);
-                    SubscribeCompile(_items[0].Rpn);
-                    SubscribeCompile(_items[2].Rpn);
+                    rpn = _items[0].Rpn;
+                    _parser.BindParameters(parameters, rpn);
+                    _parser.SubscribeOnChange(rpn, Clear);
+                    _parser.SubscribeOnChange(_items[2].Rpn, Clear);
                     if (n == 3)
-                        SubscribeCompile(_items[3].Rpn);
+                        _parser.SubscribeOnChange(_items[3].Rpn, Clear);
                 }
+
                 if (_type == SolverTypes.Repeat)
                     FixRepeat(_items[0].Rpn);
 
@@ -185,8 +197,9 @@ namespace Calcpad.Core
                     var t = rpn[^1];
                     if (t.Order > order)
                     {
-                        _items[0].Html = new HtmlWriter().AddBrackets(_items[0].Html, 1);
-                        _items[0].Xml = new XmlWriter().AddBrackets(_items[0].Xml, 1);
+                        ref var item = ref _items[0];
+                        item.Html = new HtmlWriter(_parser._settings, _parser.Phasor).AddBrackets(item.Html, 1);
+                        item.Xml = new XmlWriter(_parser._settings, _parser.Phasor).AddBrackets(item.Xml, 1);
                     }
                 }
             }
@@ -203,9 +216,9 @@ namespace Calcpad.Core
                 }
             }
 
-            private void Compile()
+            private void Compile() 
             {
-                _f = _parser.CompileRpn(_items[0].Rpn);
+                _f = _parser.CompileRpn(_items[0].Rpn, _type == SolverTypes.Repeat);
                 if (_items[2].Rpn.Length == 1 &&
                     _items[2].Rpn[0].Type == TokenTypes.Constant)
                     _va = ((ValueToken)_items[2].Rpn[0]).Value;
@@ -238,23 +251,7 @@ namespace Calcpad.Core
                 }
             }
 
-            private void SubscribeCompile(Token[] rpn)
-            {
-                for (int i = 0, len = rpn.Length; i < len; ++i)
-                {
-                    var t = rpn[i];
-                    if (t is VariableToken vt && vt.Variable is not null)
-                        vt.Variable.OnChange += Clear;
-                    else if (t.Type == TokenTypes.CustomFunction && t.Index != -1)
-                        _parser._functions[t.Index].OnChange += Clear;
-                }
-            }
-
-            private void Clear()
-            {
-                _f = null;
-                OnChange?.Invoke();
-            }
+            private void Clear() => OnChange?.Invoke();
 
             internal IValue Calculate()
             {
@@ -269,32 +266,32 @@ namespace Calcpad.Core
                 var ux1 = x1.Units;
                 if (_type != SolverTypes.Slope)
                 {
-                    x2 = IValue.AsValue((_b?.Invoke() ?? _vb), Throw.Items.Limit);
+                    x2 = IValue.AsValue((_b?.Invoke() ?? _vb), Exceptions.Items.Limit);
                     _parser.CheckReal(x2);
                     var ux2 = x2.Units;
                     if (!Unit.IsConsistent(ux1, ux2))
-                        Throw.InconsistentUnits2Exception(_items[0].Input, Unit.GetText(ux1), Unit.GetText(ux2));
+                        throw Exceptions.InconsistentUnits2(_items[0].Input, Unit.GetText(ux1), Unit.GetText(ux2));
 
                     if (ux2 is not null)
                         x2 *= ux2.ConvertTo(ux1);
                 }
-                _var.Value = x1;
+                _var.SetValue(x1);
                 if (_type == SolverTypes.Root && _y is not null)
                 {
-                    var y1 = IValue.AsValue(_f(), Throw.Items.Result);
+                    var y1 = IValue.AsValue(_f(), Exceptions.Items.Result);
                     var uy1 = y1.Units;
-                    y1 = IValue.AsValue(_y(), Throw.Items.Result);
+                    y1 = IValue.AsValue(_y(), Exceptions.Items.Result);
                     _parser.CheckReal(y1);
                     _var.SetNumber(x2.Re);
-                    var y2 = IValue.AsValue(_y(), Throw.Items.Result);
+                    var y2 = IValue.AsValue(_y(), Exceptions.Items.Result);
                     _parser.CheckReal(y2);
                     if (Math.Abs(y2.Re - y1.Re) > 1e-14)
-                        Throw.NotConstantExpressionException(_items[4].Input);
+                        throw Exceptions.NotConstantExpression(_items[4].Input);
 
                     y = y1.Re;
                     var uy2 = y2.Units;
                     if (!Unit.IsConsistent(uy1, uy2))
-                        Throw.InconsistentUnits1Exception(_items[0].Input, _items[4].Input);
+                        throw Exceptions.InconsistentUnits1(_items[0].Input, _items[4].Input);
 
                     if (uy2 is not null)
                         y *= uy2.ConvertTo(uy1);
@@ -351,7 +348,7 @@ namespace Calcpad.Core
                             break;
                         case SolverTypes.Product:
                             result = _parser._settings.IsComplex ?
-                                new ComplexValue(solver.ComplexProduct(x1.Re, x2.Re)):
+                                new ComplexValue(solver.ComplexProduct(x1.Re, x2.Re)) :
                                 new RealValue(solver.Product(x1.Re, x2.Re));
                             break;
                         case SolverTypes.Slope:
@@ -377,7 +374,7 @@ namespace Calcpad.Core
                 --_parser._isSolver;
 
                 if (double.IsNaN(d) && !_parser.IsPlotting)
-                    Throw.NoSolutionException(ToString());
+                    throw Exceptions.NoSolution(ToString());
 
                 if (result is RealValue real)
                     Result = new RealValue(real.D, solver.Units);
@@ -390,7 +387,7 @@ namespace Calcpad.Core
                 }
                 else
                     Result = result;
-                
+
                 solver.Variable = variable;
                 solver.Function = function;
                 solver.Units = solverUnits;
@@ -402,23 +399,29 @@ namespace Calcpad.Core
                 if (formatEquations)
                 {
                     if (_type == SolverTypes.Integral || _type == SolverTypes.Area)
-                        return new HtmlWriter().FormatNary(
-                            $"{TypeName(_type)}",
+                        return new HtmlWriter(_parser._settings, _parser.Phasor).FormatNary(
+                            $"<em>{TypeName(_type)}</em>",
                             _items[2].Html + "&nbsp;",
                             "&ensp;" + _items[3].Html,
                             _items[0].Html + " d" + _items[1].Html
                             );
 
                     if (_type == SolverTypes.Sum || _type == SolverTypes.Product)
-                        return new HtmlWriter().FormatNary(
+                        return new HtmlWriter(_parser._settings, _parser.Phasor).FormatNary(
                             TypeName(_type),
                             _items[1].Html + "=&hairsp;" + _items[2].Html,
                             _items[3].Html,
                             _items[0].Html
                             );
 
+                    if (_type == SolverTypes.Slope)
+                    {
+                        var writer = new HtmlWriter(_parser._settings, _parser.Phasor);
+                        return writer.FormatDivision("<em>d</em>", $"<em>d</em>\u200A{_items[1].Html}", 0) +
+                            writer.AddBrackets(_items[0].Html, 1) +
+                            $"<span class=\"low\"><em>{_items[1].Input}</em>\u200A=\u200A{_items[2].Html}</span>";
+                    }
                 }
-
                 var sb = new StringBuilder();
                 sb.Append("<span class=\"cond\">" + TypeName(_type) + "</span>{");
                 sb.Append(_items[0].Html);
@@ -456,7 +459,7 @@ namespace Calcpad.Core
             internal string ToXml()
             {
                 if (_type == SolverTypes.Integral || _type == SolverTypes.Area)
-                    return new XmlWriter().FormatNary(
+                    return new XmlWriter(_parser._settings, _parser.Phasor).FormatNary(
                         TypeName(_type),
                         _items[2].Xml,
                         _items[3].Xml,
@@ -464,12 +467,20 @@ namespace Calcpad.Core
                         );
 
                 if (_type == SolverTypes.Sum || _type == SolverTypes.Product)
-                    return new XmlWriter().FormatNary(
+                    return new XmlWriter(_parser._settings, _parser.Phasor).FormatNary(
                         TypeName(_type),
                         _items[1].Xml + XmlWriter.Run("=") + _items[2].Xml,
                         _items[3].Xml,
                         _items[0].Xml
                         );
+
+                if (_type == SolverTypes.Slope)
+                {
+                    var writer = new XmlWriter(_parser._settings, _parser.Phasor);
+                    return writer.FormatDivision(XmlWriter.Run("d"), $"{XmlWriter.Run("d")}{_items[1].Xml}", 0) +
+                        writer.FormatSubscript(writer.AddBrackets(_items[0].Xml, 1),
+                        $"{XmlWriter.Run(_items[1].Input)}{XmlWriter.Run("\u2009=\u2009")}{_items[2].Xml}");
+                }
 
                 var sb = new StringBuilder();
                 sb.Append(_items[0].Xml);
@@ -508,7 +519,7 @@ namespace Calcpad.Core
                     _type == SolverTypes.Integral ||
                     _type == SolverTypes.Area ||
                     _type == SolverTypes.Repeat)
-                    return new TextWriter().FormatNary(
+                    return new TextWriter(_parser._settings, _parser.Phasor).FormatNary(
                         "$" + _type.ToString(),
                         _items[1].Input + " = " + _items[2].Input,
                         _items[3].Input,
@@ -560,7 +571,6 @@ namespace Calcpad.Core
                         Html = parser.ToHtml();
                         Xml = parser.ToXml();
                     }
-
                 }
             }
         }

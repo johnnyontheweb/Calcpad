@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 
 namespace Calcpad.Core
 {
@@ -245,8 +244,8 @@ namespace Calcpad.Core
         }
 
         public override string ToString() => IsReal ?
-            new TextWriter().FormatReal(_a, 15) :
-            new TextWriter().FormatComplex(_a, _b, 15);
+            new TextWriter(new() { Decimals = 15 }, false).FormatReal(_a, null, false) :
+            new TextWriter(new() { Decimals = 15 }, false).FormatComplex(_a, _b, null);
 
         public override int GetHashCode() =>
             IsReal ? _a.GetHashCode() : HashCode.Combine(_a, _b);
@@ -278,7 +277,7 @@ namespace Calcpad.Core
         private static void CheckTrigScope(double angle, string func)
         {
             if (angle < TrigMin || angle > TrigMax)
-                Throw.ArgumentOutOfRangeException(func);
+                throw Exceptions.ArgumentOutOfRange(func);
         }
 
         internal static double RealRandom(in double value) =>
@@ -501,13 +500,14 @@ namespace Calcpad.Core
                 Math.Atan2(left._a, right._a) :
                 double.NaN;
 
-        internal static string Format(in Complex c, int decimals, OutputWriter.OutputFormat mode)
+        internal static string Format(in Complex c, int decimals, bool phasor, OutputWriter.OutputFormat mode)
         {
+            var settings = new MathSettings() { Decimals = decimals };
             return mode switch
             {
-                OutputWriter.OutputFormat.Text => new TextWriter().FormatComplex(c._a, c._b, decimals),
-                OutputWriter.OutputFormat.Html => new HtmlWriter().FormatComplex(c._a, c._b, decimals),
-                OutputWriter.OutputFormat.Xml => new XmlWriter().FormatComplex(c._a, c._b, decimals),
+                OutputWriter.OutputFormat.Text => new TextWriter(settings, phasor).FormatComplex(c._a, c._b, null),
+                OutputWriter.OutputFormat.Html => new HtmlWriter(settings, phasor).FormatComplex(c._a, c._b, null),
+                OutputWriter.OutputFormat.Xml => new XmlWriter(settings, phasor).FormatComplex(c._a, c._b, null),
                 _ => "undefined format"
             };
         }

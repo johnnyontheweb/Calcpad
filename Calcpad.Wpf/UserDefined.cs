@@ -97,9 +97,7 @@ namespace Calcpad.Wpf
                 _hasIncludes = true;
             }
             else if (Validator.IsKeyword(lineContent, "#def"))
-            {
                 GetMacros(lineContent[4..], lineNumber);
-            }
             else if (Validator.IsKeyword(lineContent, "#end def"))
             {
                 if (!string.IsNullOrEmpty(_macroName))
@@ -109,6 +107,17 @@ namespace Calcpad.Wpf
                     GetMacroVariablesAndFunctions(_macroBuilder.ToString().AsSpan(), lineNumber);
                     _macroName = null;
                     _macroBuilder.Clear();
+                }
+            }
+            else if (Validator.IsKeyword(lineContent, "#read"))
+            {
+                var i1 = lineContent.IndexOf(' ');
+                if (i1 > 0)
+                {
+                    var s = lineContent.Slice(i1 + 1);
+                    i1 = s.IndexOf(' ');
+                    if (i1 > 0)
+                        Variables.TryAdd(s.Slice(0, i1).ToString(), lineNumber);
                 }
             }
             else if (string.IsNullOrEmpty(_macroName))
@@ -136,6 +145,7 @@ namespace Calcpad.Wpf
 
         private void GetVariablesUnitsAndFunctions(ReadOnlySpan<char> lineContent, int lineNumber)
         {
+            lineContent = lineContent.Trim();
             if (lineContent.StartsWith("#for ", StringComparison.OrdinalIgnoreCase))
                 lineContent = lineContent[5..];
 
@@ -177,7 +187,7 @@ namespace Calcpad.Wpf
                             if (!ts.IsEmpty)
                             {
                                 var s = ts.Cut();
-                            if (isFunction)
+                                if (isFunction)
                                 {
                                     if (s[^1] == '.')
                                     {
@@ -250,15 +260,15 @@ namespace Calcpad.Wpf
 
         private void GetMacroVariablesAndFunctions(ReadOnlySpan<char> content, int lineNumber)
         {
-            if (content.StartsWith("#for ", StringComparison.OrdinalIgnoreCase))
-                content = content[5..];
-
-            var lines = content.EnumerateLines();
+            var lines = content.Trim().EnumerateLines();
             var i = lineNumber - content.Count(Environment.NewLine) - 1;
             foreach (var line in lines)
             {
                 ++i;
-                var commentEnumerator = line.EnumerateComments();
+                var lineSpan = line.Trim();
+                if (lineSpan.StartsWith("#for ", StringComparison.OrdinalIgnoreCase))
+                    lineSpan = lineSpan[5..];
+                var commentEnumerator = lineSpan.EnumerateComments();
                 foreach (var item in commentEnumerator)
                 {
                     if (!item.IsEmpty && item[0] != '"' && item[0] != '\'')
@@ -349,7 +359,7 @@ namespace Calcpad.Wpf
                 {
                     if (!string.IsNullOrEmpty(_macroName))
                         MacroProcedures.TryAdd(_macroName, lineContent[(_macroName.Length + 1)..(i + 1)].ToString());
-                    
+
                     isComplete = true;
                 }
                 else if (c == '=')

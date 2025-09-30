@@ -22,7 +22,8 @@ namespace Calcpad.Core
                 (in ComplexValue a, in ComplexValue b) => a & b,
                 (in ComplexValue a, in ComplexValue b) => a | b,
                 (in ComplexValue a, in ComplexValue b) => a ^ b,
-                (in ComplexValue _, in ComplexValue b) => b
+                (in ComplexValue _, in ComplexValue b) => b, 
+                (in ComplexValue a, in ComplexValue b) => Phasor(a, b),
             ];
         private readonly Function<ComplexValue>[] _functions;
         private readonly Operator<ComplexValue>[] Functions2;
@@ -93,11 +94,12 @@ namespace Calcpad.Core
                 Real,     //37
                 Imaginary,//38s
                 Phase,    //39
-                Random,   //40
-                Fact,     //41
-                (in ComplexValue a) => -a,   //42
-                (in ComplexValue a) => Not(a),      //43
-                Timer     //44  
+                Conjugate,//40
+                Random,   //41
+                Fact,     //42
+                (in ComplexValue a) => -a,   //43
+                Not,      //44
+                Timer     //45  
             ];
 
             Functions2 =
@@ -124,19 +126,21 @@ namespace Calcpad.Core
         private static ComplexValue Fact(in ComplexValue value)
         {
             if (!(value.IsReal))
-                Throw.FactorialArgumentComplexException();
+                throw Exceptions.FactorialArgumentComplex();
 
             if (value.Units is not null)
-                Throw.FactorialArgumentUnitlessException();
+                throw Exceptions.FactorialArgumentUnitless();
 
             return new(Fact(value.A));
         }
 
         private static ComplexValue Real(in ComplexValue value) => new(value.A, value.Units);
         private static ComplexValue Imaginary(in ComplexValue value) => new(value.B, value.Units);
-        private static ComplexValue Phase(in ComplexValue value) => new(value.Complex.Phase);
         internal static ComplexValue Abs(in ComplexValue value) =>
-           new(Complex.Abs(value.Complex), value.Units);
+          new(Complex.Abs(value.Complex), value.Units);
+        private static ComplexValue Phase(in ComplexValue value) => new(value.Complex.Phase);
+        internal static ComplexValue Conjugate(in ComplexValue value) =>
+           new(value.Complex.Conjugate, value.Units);
 
         private static ComplexValue Sign(in ComplexValue value) =>
             new(Complex.Sign(value.Complex));
@@ -151,6 +155,17 @@ namespace Calcpad.Core
         {
             CheckFunctionUnits("cos", value.Units);
             return new(Complex.Cos(FromAngleUnits(value)));
+        }
+
+
+        internal static ComplexValue Phasor(ComplexValue a, ComplexValue b)
+        {
+            CheckFunctionUnits("phasor", b.Units);
+            var u = b.Units;
+            var d = u is null ? 1d : u.ConvertTo(Unit.Get("rad"));
+            var phi = b.A * d;
+            var c = a.A * (Math.Cos(phi) + Complex.ImaginaryOne * Math.Sin(phi));
+            return new ComplexValue(c, a.Units, a.IsUnit);
         }
 
         private ComplexValue Tan(in ComplexValue value)
@@ -339,7 +354,7 @@ namespace Calcpad.Core
                 return new(result);
 
             var unit = Unit.Root(u, 2, value.IsUnit);
-            return new(result, unit);
+            return new(result, unit, value.IsUnit);
         }
 
         private static ComplexValue Cbrt(in ComplexValue value)
@@ -353,7 +368,7 @@ namespace Calcpad.Core
                 return new(result);
 
             var unit = Unit.Root(u, 3, value.IsUnit);
-            return new(result, unit);
+            return new(result, unit, value.IsUnit);
         }
 
         private static ComplexValue Root(in ComplexValue value, in ComplexValue root)
@@ -370,7 +385,7 @@ namespace Calcpad.Core
                 return new(result);
 
             var unit = Unit.Root(u, n, value.IsUnit);
-            return new(result, unit);
+            return new(result, unit, value.IsUnit);
         }
 
         private static ComplexValue Round(in ComplexValue value) => new(Complex.Round(value.Complex), value.Units);
@@ -461,7 +476,7 @@ namespace Calcpad.Core
 
         private static IScalarValue Product(IScalarValue[] values)
         {
-            ref var value = ref values[0];  
+            ref var value = ref values[0];
             var result = value.Complex;
             var u = value.Units;
             for (int i = 1, len = values.Length; i < len; ++i)
